@@ -88,15 +88,22 @@
         </div>
       </section>
 
-      <nav class="tabs" aria-label="Navigation principale">
-        <button class="tab active" type="button" data-view="dashboard">Dashboard</button>
-        <button class="tab" type="button" data-view="stock">Stock</button>
-        <button class="tab" type="button" data-view="movements">Mouvements</button>
-        <button class="tab" type="button" data-view="inventory">Inventaire</button>
-        <button class="tab" type="button" data-view="orders">À commander</button>
-        <button class="tab admin-only" type="button" data-view="articles">Articles</button>
-        <button class="tab rights-only" type="button" data-view="rights">Droits</button>
-        <button class="tab" type="button" data-view="labels">Étiquettes</button>
+      <nav class="taskbar" aria-label="Navigation principale">
+        <div class="taskbar-main">
+          <button class="task active" type="button" data-view="dashboard">Dashboard</button>
+          <button class="task" type="button" data-view="stock">Stock</button>
+          <button class="task" type="button" data-view="movements">Mouvements</button>
+          <button class="task" type="button" data-view="inventory">Inventaire</button>
+          <button class="task" type="button" data-view="orders">À commander</button>
+        </div>
+        <div class="option-menu">
+          <button id="optionMenuBtn" class="task option-toggle" type="button" aria-expanded="false">Options</button>
+          <div id="optionMenu" class="option-panel" hidden>
+            <button class="option-item admin-only" type="button" data-view="articles">Articles</button>
+            <button class="option-item rights-only" type="button" data-view="rights">Droits techniciens</button>
+            <button class="option-item" type="button" data-view="labels">Étiquettes</button>
+          </div>
+        </div>
       </nav>
 
       <section id="dashboardView" class="view active-view">

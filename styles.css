@@ -328,15 +328,26 @@ select:focus {
   color: var(--muted);
 }
 
-.tabs {
+.taskbar {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
   margin-bottom: 16px;
-  overflow-x: auto;
-  padding-bottom: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
 }
 
-.tab {
+.taskbar-main {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.task {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -347,10 +358,50 @@ select:focus {
   white-space: nowrap;
 }
 
-.tab.active {
+.task.active,
+.option-item.active {
   border-color: var(--accent);
   background: var(--accent);
   color: #fff;
+}
+
+.option-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.option-toggle::after {
+  content: " ▾";
+}
+
+.option-panel {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: calc(100% + 8px);
+  display: grid;
+  width: 220px;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.option-item {
+  min-height: 38px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0 11px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 800;
+  text-align: left;
+}
+
+.option-item:hover {
+  background: #f8fafc;
 }
 
 .view {
@@ -648,7 +699,7 @@ td span {
 
   .topbar,
   .scanner-panel,
-  .tabs,
+  .taskbar,
   .panel-heading button {
     display: none !important;
   }
@@ -697,9 +748,26 @@ td span {
   .topbar-actions,
   .scan-row,
   .filters,
-  .panel-heading {
+  .panel-heading,
+  .taskbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .taskbar-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: visible;
+  }
+
+  .option-menu {
+    width: 100%;
+  }
+
+  .option-panel {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
   }
 
   .compact-select,

@@ -107,6 +107,8 @@ const elements = {
   printLabelsBtn: document.querySelector("#printLabelsBtn"),
   labelGrid: document.querySelector("#labelGrid"),
   rightsList: document.querySelector("#rightsList"),
+  optionMenuBtn: document.querySelector("#optionMenuBtn"),
+  optionMenu: document.querySelector("#optionMenu"),
 };
 
 let data = loadData();
@@ -800,12 +802,24 @@ function stopCameraScanner() {
 }
 
 function activateView(viewName) {
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.view === viewName);
+  document.querySelectorAll("[data-view]").forEach((item) => {
+    item.classList.toggle("active", item.dataset.view === viewName);
   });
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("active-view", view.id === `${viewName}View`);
   });
+  closeOptionMenu();
+}
+
+function toggleOptionMenu() {
+  const willOpen = elements.optionMenu.hidden;
+  elements.optionMenu.hidden = !willOpen;
+  elements.optionMenuBtn.setAttribute("aria-expanded", String(willOpen));
+}
+
+function closeOptionMenu() {
+  elements.optionMenu.hidden = true;
+  elements.optionMenuBtn.setAttribute("aria-expanded", "false");
 }
 
 function exportCsv(filename, rows) {
@@ -888,8 +902,17 @@ function seedData() {
   setMessage("Données exemple chargées.", "success");
 }
 
-document.querySelectorAll(".tab").forEach((tab) => {
-  tab.addEventListener("click", () => activateView(tab.dataset.view));
+document.querySelectorAll("[data-view]").forEach((item) => {
+  item.addEventListener("click", () => activateView(item.dataset.view));
+});
+
+elements.optionMenuBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleOptionMenu();
+});
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".option-menu")) closeOptionMenu();
 });
 
 elements.userSelect.addEventListener("change", () => {
