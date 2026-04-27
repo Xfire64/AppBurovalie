@@ -304,7 +304,24 @@ select:focus {
 }
 
 #qrReader {
+  position: absolute !important;
+  inset: 0;
   color: #fff;
+  overflow: hidden;
+}
+
+#qrReader > div,
+#qrReader__scan_region {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+#qrReader__scan_region video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
 }
 
 #qrReader__dashboard,
@@ -313,15 +330,28 @@ select:focus {
   display: none !important;
 }
 
-.scan-line {
+.scan-target {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(72%, 320px);
+  aspect-ratio: 1.7 / 1;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 10px;
+  box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.scan-target::after {
+  content: "";
   position: absolute;
   left: 12%;
   right: 12%;
   top: 50%;
-  height: 3px;
+  height: 2px;
   border-radius: 999px;
-  background: #ef4444;
-  box-shadow: 0 0 18px rgba(239, 68, 68, 0.95);
+  background: rgba(239, 68, 68, 0.9);
 }
 
 .camera-actions {

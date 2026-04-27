@@ -918,7 +918,13 @@ async function startHtml5QrScanner() {
     html5QrScanner = new window.Html5Qrcode("qrReader");
     await html5QrScanner.start(
       { facingMode: "environment" },
-      { fps: 10, qrbox: 260 },
+      {
+        fps: 10,
+        qrbox: (width, height) => ({
+          width: Math.floor(Math.min(width * 0.72, 320)),
+          height: Math.floor(Math.min(height * 0.55, 190)),
+        }),
+      },
       (decodedText) => {
         stopCameraScanner();
         elements.barcodeInput.value = decodedText;
