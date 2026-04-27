@@ -584,6 +584,57 @@ td span {
   background: #111;
 }
 
+.rights-list {
+  display: grid;
+  gap: 12px;
+}
+
+.rights-card {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.rights-card span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.rights-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 9px;
+  font-weight: 700;
+}
+
+.check-row input {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+}
+
+.check-row span {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+}
+
 .empty {
   padding: 18px 10px;
   color: var(--muted);
@@ -630,7 +681,9 @@ td span {
 
   .dashboard-grid,
   .location-grid,
-  .label-grid {
+  .label-grid,
+  .rights-card,
+  .rights-options {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -660,6 +713,8 @@ td span {
   .dashboard-grid,
   .location-grid,
   .label-grid,
+  .rights-card,
+  .rights-options,
   .two-cols {
     grid-template-columns: 1fr;
   }

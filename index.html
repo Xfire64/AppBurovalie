@@ -95,6 +95,7 @@
         <button class="tab" type="button" data-view="inventory">Inventaire</button>
         <button class="tab" type="button" data-view="orders">À commander</button>
         <button class="tab admin-only" type="button" data-view="articles">Articles</button>
+        <button class="tab rights-only" type="button" data-view="rights">Droits</button>
         <button class="tab" type="button" data-view="labels">Étiquettes</button>
       </nav>
 
@@ -294,6 +295,18 @@
             <button id="printLabelsBtn" class="ghost-btn" type="button">Imprimer</button>
           </div>
           <div id="labelGrid" class="label-grid"></div>
+        </section>
+      </section>
+
+      <section id="rightsView" class="view">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Droits techniciens</h2>
+              <p class="hint">Choisir les stocks accessibles par chaque technicien pour consulter, sortir et transférer.</p>
+            </div>
+          </div>
+          <div id="rightsList" class="rights-list"></div>
         </section>
       </section>
     </main>

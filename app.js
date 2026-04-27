@@ -3,7 +3,7 @@ const storageKey = "appburovalie-data-v1";
 const defaultData = {
   users: [
     { id: "u-admin", name: "Admin Burovalie", role: "admin", locationId: "depot-siege" },
-    { id: "u-tech-1", name: "Technicien 1", role: "technicien", locationId: "veh-tech-1" },
+    { id: "u-tech-1", name: "Technicien 1", role: "technicien", locationId: "veh-tech-1", allowedLocationIds: ["veh-tech-1", "depot-siege"] },
     { id: "u-resp", name: "Responsable technique", role: "responsable", locationId: "depot-siege" },
     { id: "u-dir", name: "Direction", role: "direction", locationId: "depot-siege" },
   ],
@@ -106,6 +106,7 @@ const elements = {
   articleBody: document.querySelector("#articleBody"),
   printLabelsBtn: document.querySelector("#printLabelsBtn"),
   labelGrid: document.querySelector("#labelGrid"),
+  rightsList: document.querySelector("#rightsList"),
 };
 
 let data = loadData();
@@ -137,9 +138,25 @@ function canSeeAllStocks() {
   return ["admin", "responsable", "direction"].includes(currentUser().role);
 }
 
+function canManageRights() {
+  return ["admin", "responsable", "direction"].includes(currentUser().role);
+}
+
+function allowedLocationIdsFor(user) {
+  if (!user) return [];
+  if (["admin", "responsable", "direction"].includes(user.role)) {
+    return data.locations.map((location) => location.id);
+  }
+
+  const ids = new Set(user.allowedLocationIds || []);
+  ids.add(user.locationId);
+  return [...ids];
+}
+
 function visibleLocations() {
   if (canSeeAllStocks()) return data.locations;
-  return data.locations.filter((location) => location.id === currentUser().locationId);
+  const allowedIds = new Set(allowedLocationIdsFor(currentUser()));
+  return data.locations.filter((location) => allowedIds.has(location.id));
 }
 
 function getArticle(articleId) {
@@ -246,6 +263,9 @@ function renderUsers() {
   document.querySelectorAll(".admin-only").forEach((element) => {
     element.hidden = !["admin", "responsable"].includes(currentUser().role);
   });
+  document.querySelectorAll(".rights-only").forEach((element) => {
+    element.hidden = !canManageRights();
+  });
 }
 
 function renderSelects() {
@@ -259,7 +279,9 @@ function renderSelects() {
     name: `${article.reference} - ${article.name}`,
   })));
 
-  elements.scanLocationSelect.value = currentUser().locationId;
+  elements.scanLocationSelect.value = locations.some((location) => location.id === currentUser().locationId)
+    ? currentUser().locationId
+    : locations[0]?.id;
   elements.locationFilter.value = "all";
 }
 
@@ -424,6 +446,40 @@ function renderPermissions() {
   if (!canManageArticles && document.querySelector("#articlesView").classList.contains("active-view")) {
     activateView("dashboard");
   }
+
+  document.querySelector('[data-view="rights"]').hidden = !canManageRights();
+  if (!canManageRights() && document.querySelector("#rightsView").classList.contains("active-view")) {
+    activateView("dashboard");
+  }
+}
+
+function renderRights() {
+  if (!elements.rightsList) return;
+  const technicians = data.users.filter((user) => user.role === "technicien");
+  elements.rightsList.innerHTML = technicians.length ? technicians.map((user) => {
+    const allowedIds = new Set(allowedLocationIdsFor(user));
+    return `
+      <article class="rights-card" data-user-rights="${user.id}">
+        <div>
+          <strong>${user.name}</strong>
+          <span>Stock principal : ${getLocation(user.locationId)?.name || "-"}</span>
+        </div>
+        <div class="rights-options">
+          ${data.locations.map((location) => `
+            <label class="check-row">
+              <input
+                type="checkbox"
+                value="${location.id}"
+                ${allowedIds.has(location.id) ? "checked" : ""}
+                ${location.id === user.locationId ? "disabled" : ""}
+              />
+              <span>${location.name}</span>
+            </label>
+          `).join("")}
+        </div>
+      </article>
+    `;
+  }).join("") : `<p class="empty">Aucun technicien configuré.</p>`;
 }
 
 function renderAll() {
@@ -438,6 +494,7 @@ function renderAll() {
   renderOrders();
   renderArticles();
   renderLabels();
+  renderRights();
 }
 
 function resetArticleForm() {
@@ -516,6 +573,14 @@ function createMovement({ type, articleId, quantity, fromLocationId = "", toLoca
   const qty = Number(quantity);
   if (!qty || qty < 1) {
     setMessage("Quantité invalide.", "warning");
+    return false;
+  }
+
+  const allowedIds = new Set(allowedLocationIdsFor(currentUser()));
+  const checkedLocations = [fromLocationId, toLocationId].filter(Boolean);
+  const forbiddenLocation = checkedLocations.find((locationId) => !allowedIds.has(locationId));
+  if (forbiddenLocation) {
+    setMessage("Tu n'as pas accès à ce stock.", "warning");
     return false;
   }
 
@@ -804,6 +869,18 @@ function exportOrders() {
   ]);
 }
 
+function updateTechnicianRights(userId, selectedIds) {
+  data.users = data.users.map((user) => {
+    if (user.id !== userId) return user;
+    const ids = new Set(selectedIds);
+    ids.add(user.locationId);
+    return { ...user, allowedLocationIds: [...ids] };
+  });
+  saveData();
+  renderAll();
+  setMessage("Droits technicien mis à jour.", "success");
+}
+
 function seedData() {
   data = structuredClone(defaultData);
   saveData();
@@ -869,6 +946,14 @@ elements.inventoryList.addEventListener("click", (event) => {
     toLocationId: locationId,
     note: `Inventaire : ancien stock ${oldQuantity}`,
   });
+});
+
+elements.rightsList.addEventListener("change", (event) => {
+  if (!event.target.matches('input[type="checkbox"]')) return;
+  const card = event.target.closest("[data-user-rights]");
+  if (!card) return;
+  const selectedIds = [...card.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
+  updateTechnicianRights(card.dataset.userRights, selectedIds);
 });
 
 elements.movementTypeSelect.addEventListener("change", () => {
