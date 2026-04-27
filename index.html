@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="StockScan" />
+    <title>StockScan - Gestion de stock</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <p class="eyebrow">Gestion de stock</p>
+          <h1>StockScan</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="installBtn" class="ghost-btn" type="button" hidden>Installer</button>
+          <button id="seedBtn" class="ghost-btn" type="button">Charger un exemple</button>
+        </div>
+      </section>
+
+      <section class="scanner-panel">
+        <div class="scan-card">
+          <label for="barcodeInput">Lecteur de code-barres</label>
+          <div class="scan-row">
+            <input
+              id="barcodeInput"
+              type="text"
+              inputmode="numeric"
+              autocomplete="off"
+              placeholder="Scanner ou saisir un code puis Entrée"
+              autofocus
+            />
+            <button id="scanBtn" type="button">Scanner</button>
+          </div>
+          <p id="scanMessage" class="status">Prêt à scanner.</p>
+
+          <div id="cameraScanner" class="camera-scanner" hidden>
+            <div class="camera-frame">
+              <video id="cameraVideo" muted playsinline></video>
+              <div class="scan-line"></div>
+            </div>
+            <div class="camera-actions">
+              <button id="stopCameraBtn" class="ghost-btn" type="button">Arrêter la caméra</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <article>
+            <span id="itemCount">0</span>
+            <small>Articles</small>
+          </article>
+          <article>
+            <span id="unitCount">0</span>
+            <small>Unités</small>
+          </article>
+          <article>
+            <span id="lowCount">0</span>
+            <small>Stock bas</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <form id="productForm" class="panel">
+          <div class="panel-heading">
+            <h2>Article</h2>
+            <button id="resetFormBtn" class="icon-btn" type="button" title="Nouveau">+</button>
+          </div>
+
+          <label for="nameInput">Nom</label>
+          <input id="nameInput" type="text" placeholder="Ex : Café en grains" required />
+
+          <label for="codeInput">Code-barres</label>
+          <input id="codeInput" type="text" placeholder="Ex : 3760123456789" required />
+
+          <div class="two-cols">
+            <div>
+              <label for="qtyInput">Quantité</label>
+              <input id="qtyInput" type="number" min="0" step="1" value="0" required />
+            </div>
+            <div>
+              <label for="minInput">Seuil mini</label>
+              <input id="minInput" type="number" min="0" step="1" value="5" required />
+            </div>
+          </div>
+
+          <label for="locationInput">Emplacement</label>
+          <input id="locationInput" type="text" placeholder="Ex : Rayon A2" />
+
+          <button class="primary-btn" type="submit">Enregistrer</button>
+        </form>
+
+        <section class="panel inventory-panel">
+          <div class="panel-heading">
+            <h2>Inventaire</h2>
+            <input id="searchInput" class="search" type="search" placeholder="Rechercher" />
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Article</th>
+                  <th>Code</th>
+                  <th>Stock</th>
+                  <th>Lieu</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inventoryBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <template id="rowTemplate">
+      <tr>
+        <td>
+          <strong class="item-name"></strong>
+          <span class="item-alert"></span>
+        </td>
+        <td class="item-code"></td>
+        <td class="item-qty"></td>
+        <td class="item-location"></td>
+        <td>
+          <div class="actions">
+            <button class="stock-in" type="button" title="Entrée stock">+</button>
+            <button class="stock-out" type="button" title="Sortie stock">-</button>
+            <button class="edit" type="button">Modifier</button>
+            <button class="delete" type="button">Supprimer</button>
+          </div>
+        </td>
+      </tr>
+    </template>
+
+    <script src="https://unpkg.com/html5-qrcode" defer></script>
+    <script src="app.js" defer></script>
+  </body>
+</html>
