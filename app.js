@@ -1001,9 +1001,18 @@ elements.installBtn.addEventListener("click", async () => {
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {
-      setMessage("Mode hors ligne indisponible sur ce navigateur.", "warning");
-    });
+    navigator.serviceWorker.register("sw.js")
+      .then((registration) => registration.update())
+      .catch(() => {
+        setMessage("Mode hors ligne indisponible sur ce navigateur.", "warning");
+      });
+  });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
   });
 }
 

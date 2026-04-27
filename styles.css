@@ -108,6 +108,25 @@ h1 {
   font-size: 30px;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.version-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 9px;
+  background: #fee4e2;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 h2 {
   margin-bottom: 0;
   font-size: 18px;
