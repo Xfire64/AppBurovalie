@@ -98,6 +98,8 @@ const elements = {
   inventoryList: document.querySelector("#inventoryList"),
   ordersBody: document.querySelector("#ordersBody"),
   exportOrdersBtn: document.querySelector("#exportOrdersBtn"),
+  topPeriodSelect: document.querySelector("#topPeriodSelect"),
+  topArticlesList: document.querySelector("#topArticlesList"),
   productForm: document.querySelector("#productForm"),
   resetFormBtn: document.querySelector("#resetFormBtn"),
   nameInput: document.querySelector("#nameInput"),
@@ -125,6 +127,9 @@ let scanTimer = 0;
 let barcodeDetector = null;
 let html5QrScanner = null;
 let movementDraft = [];
+let lastDetectedCode = "";
+let stableDetectionCount = 0;
+let lastAcceptedScanAt = 0;
 
 function loadData() {
   try {
@@ -472,6 +477,36 @@ function renderOrders() {
   `).join("") : `<tr><td class="empty" colspan="5">Aucun article à commander.</td></tr>`;
 }
 
+function renderTopArticles() {
+  const period = elements.topPeriodSelect.value;
+  const minDate = period === "all" ? 0 : Date.now() - Number(period) * 24 * 60 * 60 * 1000;
+  const totals = new Map();
+
+  data.movements
+    .filter((movement) => movement.type === "exit" && new Date(movement.date).getTime() >= minDate)
+    .forEach((movement) => {
+      totals.set(movement.articleId, (totals.get(movement.articleId) || 0) + Number(movement.quantity || 0));
+    });
+
+  const rows = [...totals.entries()]
+    .map(([articleId, quantity]) => ({ article: getArticle(articleId), quantity }))
+    .filter((row) => row.article)
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 12);
+
+  const max = Math.max(...rows.map((row) => row.quantity), 1);
+  elements.topArticlesList.innerHTML = rows.length ? rows.map((row, index) => `
+    <article class="top-item">
+      <span class="rank">${index + 1}</span>
+      <div class="top-info">
+        <strong>${row.article.reference} - ${row.article.name}</strong>
+        <div class="top-bar"><i style="width:${Math.max(8, (row.quantity / max) * 100)}%"></i></div>
+      </div>
+      <b>${row.quantity}</b>
+    </article>
+  `).join("") : `<p class="empty">Aucune sortie sur cette période.</p>`;
+}
+
 function renderArticles() {
   const query = elements.articleSearchInput.value.trim().toLowerCase();
   const articles = data.articles.filter((article) =>
@@ -562,6 +597,7 @@ function renderAll() {
   renderMovements();
   renderInventory();
   renderOrders();
+  renderTopArticles();
   renderArticles();
   renderLabels();
   renderRights();
@@ -926,6 +962,7 @@ async function startHtml5QrScanner() {
         }),
       },
       (decodedText) => {
+        if (!isStableScan(decodedText)) return;
         stopCameraScanner();
         elements.barcodeInput.value = decodedText;
         handleScannedCode(decodedText, "search");
@@ -943,7 +980,16 @@ async function detectBarcodeLoop() {
   try {
     const barcodes = await barcodeDetector.detect(elements.cameraVideo);
     if (barcodes.length > 0) {
-      const code = normalizeCode(barcodes[0].rawValue);
+      const barcode = barcodes.find(isBarcodeOnScanLine);
+      if (!barcode) {
+        scanTimer = window.setTimeout(detectBarcodeLoop, 180);
+        return;
+      }
+      const code = normalizeCode(barcode.rawValue);
+      if (!isStableScan(code)) {
+        scanTimer = window.setTimeout(detectBarcodeLoop, 180);
+        return;
+      }
       stopCameraScanner();
       elements.barcodeInput.value = code;
       handleScannedCode(code, "search");
@@ -955,10 +1001,39 @@ async function detectBarcodeLoop() {
   scanTimer = window.setTimeout(detectBarcodeLoop, 250);
 }
 
+function isBarcodeOnScanLine(barcode) {
+  if (!barcode.boundingBox || !elements.cameraVideo.videoHeight) return true;
+  const lineY = elements.cameraVideo.videoHeight / 2;
+  const boxTop = barcode.boundingBox.y;
+  const boxBottom = barcode.boundingBox.y + barcode.boundingBox.height;
+  return lineY >= boxTop && lineY <= boxBottom;
+}
+
+function isStableScan(code) {
+  const cleanCode = normalizeCode(code);
+  const now = Date.now();
+  if (now - lastAcceptedScanAt < 1600) return false;
+
+  if (cleanCode === lastDetectedCode) {
+    stableDetectionCount += 1;
+  } else {
+    lastDetectedCode = cleanCode;
+    stableDetectionCount = 1;
+  }
+
+  if (stableDetectionCount < 2) return false;
+  lastAcceptedScanAt = now;
+  stableDetectionCount = 0;
+  lastDetectedCode = "";
+  return true;
+}
+
 function stopCameraScanner() {
   window.clearTimeout(scanTimer);
   scanTimer = 0;
   barcodeDetector = null;
+  stableDetectionCount = 0;
+  lastDetectedCode = "";
 
   if (html5QrScanner) {
     html5QrScanner.stop().catch(() => {}).finally(() => {
@@ -1135,6 +1210,7 @@ elements.articleSearchInput.addEventListener("input", renderArticles);
 elements.exportStockBtn.addEventListener("click", exportStock);
 elements.exportMovementsBtn.addEventListener("click", exportMovements);
 elements.exportOrdersBtn.addEventListener("click", exportOrders);
+elements.topPeriodSelect.addEventListener("change", renderTopArticles);
 elements.printLabelsBtn.addEventListener("click", () => window.print());
 
 elements.articleBody.addEventListener("click", (event) => {

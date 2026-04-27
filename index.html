@@ -22,7 +22,7 @@
             <p class="eyebrow">Burovalie</p>
             <div class="title-row">
               <h1>Gestion de stock</h1>
-              <span class="version-pill">v1.4</span>
+              <span class="version-pill">v1.5</span>
             </div>
           </div>
         </div>
@@ -121,6 +121,7 @@
           <button class="task" type="button" data-view="stock">Stock</button>
           <button class="task" type="button" data-view="movements">Mouvements</button>
           <button class="task" type="button" data-view="inventory">Inventaire</button>
+          <button class="task" type="button" data-view="topArticles">Top articles</button>
           <button class="task" type="button" data-view="orders">À commander</button>
         </div>
       </nav>
@@ -264,6 +265,25 @@
               <tbody id="ordersBody"></tbody>
             </table>
           </div>
+        </section>
+      </section>
+
+      <section id="topArticlesView" class="view">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Top articles</h2>
+              <p class="hint">Classement des articles les plus sortis sur la période choisie.</p>
+            </div>
+            <select id="topPeriodSelect" class="compact-select">
+              <option value="7">7 derniers jours</option>
+              <option value="30" selected>30 derniers jours</option>
+              <option value="90">90 derniers jours</option>
+              <option value="365">12 derniers mois</option>
+              <option value="all">Tout l'historique</option>
+            </select>
+          </div>
+          <div id="topArticlesList" class="top-list"></div>
         </section>
       </section>
 
