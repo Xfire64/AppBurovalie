@@ -350,7 +350,6 @@ select:focus {
 .taskbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   margin-bottom: 16px;
   border: 1px solid var(--line);
@@ -378,37 +377,60 @@ select:focus {
 }
 
 .task.active,
-.option-item.active {
+.menu-action.active {
   border-color: var(--accent);
   background: var(--accent);
   color: #fff;
 }
 
-.option-menu {
+.app-menu {
   position: relative;
   flex: 0 0 auto;
 }
 
-.option-toggle::after {
-  content: " ▾";
+.menu-btn {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
 }
 
-.option-panel {
+.menu-btn span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--black);
+}
+
+.app-menu-panel {
   position: absolute;
   z-index: 20;
   right: 0;
   top: calc(100% + 8px);
   display: grid;
-  width: 220px;
-  gap: 6px;
+  width: 290px;
+  gap: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 8px;
+  padding: 12px;
   background: #fff;
   box-shadow: var(--shadow);
 }
 
-.option-item {
+.app-menu-panel h3 {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.menu-action {
+  width: 100%;
   min-height: 38px;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -419,7 +441,20 @@ select:focus {
   text-align: left;
 }
 
-.option-item:hover {
+.menu-action:hover {
+  background: #f8fafc;
+}
+
+.menu-action.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.menu-action.disabled,
+.menu-action:disabled {
+  cursor: not-allowed;
+  color: var(--muted);
   background: #f8fafc;
 }
 
@@ -779,11 +814,11 @@ td span {
     overflow: visible;
   }
 
-  .option-menu {
+  .app-menu {
     width: 100%;
   }
 
-  .option-panel {
+  .app-menu-panel {
     position: static;
     width: 100%;
     margin-top: 8px;

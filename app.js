@@ -107,8 +107,9 @@ const elements = {
   printLabelsBtn: document.querySelector("#printLabelsBtn"),
   labelGrid: document.querySelector("#labelGrid"),
   rightsList: document.querySelector("#rightsList"),
-  optionMenuBtn: document.querySelector("#optionMenuBtn"),
-  optionMenu: document.querySelector("#optionMenu"),
+  appMenuBtn: document.querySelector("#appMenuBtn"),
+  appMenu: document.querySelector("#appMenu"),
+  logoutBtn: document.querySelector("#logoutBtn"),
 };
 
 let data = loadData();
@@ -808,18 +809,18 @@ function activateView(viewName) {
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("active-view", view.id === `${viewName}View`);
   });
-  closeOptionMenu();
+  closeAppMenu();
 }
 
-function toggleOptionMenu() {
-  const willOpen = elements.optionMenu.hidden;
-  elements.optionMenu.hidden = !willOpen;
-  elements.optionMenuBtn.setAttribute("aria-expanded", String(willOpen));
+function toggleAppMenu() {
+  const willOpen = elements.appMenu.hidden;
+  elements.appMenu.hidden = !willOpen;
+  elements.appMenuBtn.setAttribute("aria-expanded", String(willOpen));
 }
 
-function closeOptionMenu() {
-  elements.optionMenu.hidden = true;
-  elements.optionMenuBtn.setAttribute("aria-expanded", "false");
+function closeAppMenu() {
+  elements.appMenu.hidden = true;
+  elements.appMenuBtn.setAttribute("aria-expanded", "false");
 }
 
 function exportCsv(filename, rows) {
@@ -906,19 +907,28 @@ document.querySelectorAll("[data-view]").forEach((item) => {
   item.addEventListener("click", () => activateView(item.dataset.view));
 });
 
-elements.optionMenuBtn.addEventListener("click", (event) => {
+elements.appMenuBtn.addEventListener("click", (event) => {
   event.stopPropagation();
-  toggleOptionMenu();
+  toggleAppMenu();
 });
 
 document.addEventListener("click", (event) => {
-  if (!event.target.closest(".option-menu")) closeOptionMenu();
+  if (!event.target.closest(".app-menu")) closeAppMenu();
 });
 
 elements.userSelect.addEventListener("change", () => {
   data.currentUserId = elements.userSelect.value;
   saveData();
   renderAll();
+  closeAppMenu();
+  setMessage(`Connecté : ${currentUser().name}.`, "success");
+});
+elements.logoutBtn.addEventListener("click", () => {
+  data.currentUserId = data.users[0].id;
+  saveData();
+  renderAll();
+  activateView("dashboard");
+  setMessage("Déconnexion simulée. Retour au profil Admin.", "warning");
 });
 elements.seedBtn.addEventListener("click", seedData);
 elements.scanBtn.addEventListener("click", () => startCameraScanner());

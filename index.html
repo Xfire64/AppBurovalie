@@ -27,12 +27,35 @@
           </div>
         </div>
         <div class="topbar-actions">
-          <label class="user-switch" for="userSelect">
-            Profil
-            <select id="userSelect"></select>
-          </label>
           <button id="installBtn" class="ghost-btn" type="button" hidden>Installer</button>
           <button id="seedBtn" class="ghost-btn" type="button">Données exemple</button>
+          <div class="app-menu">
+            <button id="appMenuBtn" class="menu-btn" type="button" aria-label="Menu" aria-expanded="false">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+            <div id="appMenu" class="app-menu-panel" hidden>
+              <section>
+                <h3>Connexion</h3>
+                <label class="user-switch" for="userSelect">
+                  Profil utilisateur
+                  <select id="userSelect"></select>
+                </label>
+                <button id="logoutBtn" class="menu-action" type="button">Déconnexion</button>
+              </section>
+              <section>
+                <h3>Options</h3>
+                <button class="menu-action admin-only" type="button" data-view="articles">Articles</button>
+                <button class="menu-action rights-only" type="button" data-view="rights">Droits techniciens</button>
+                <button class="menu-action" type="button" data-view="labels">Étiquettes</button>
+              </section>
+              <section>
+                <h3>Dashboard</h3>
+                <button class="menu-action disabled" type="button" disabled>Personnalisation bientôt</button>
+              </section>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -98,14 +121,6 @@
           <button class="task" type="button" data-view="movements">Mouvements</button>
           <button class="task" type="button" data-view="inventory">Inventaire</button>
           <button class="task" type="button" data-view="orders">À commander</button>
-        </div>
-        <div class="option-menu">
-          <button id="optionMenuBtn" class="task option-toggle" type="button" aria-expanded="false">Options</button>
-          <div id="optionMenu" class="option-panel" hidden>
-            <button class="option-item admin-only" type="button" data-view="articles">Articles</button>
-            <button class="option-item rights-only" type="button" data-view="rights">Droits techniciens</button>
-            <button class="option-item" type="button" data-view="labels">Étiquettes</button>
-          </div>
         </div>
       </nav>
 
