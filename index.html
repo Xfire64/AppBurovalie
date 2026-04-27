@@ -22,7 +22,7 @@
             <p class="eyebrow">Burovalie</p>
             <div class="title-row">
               <h1>Gestion de stock</h1>
-              <span class="version-pill">v1.3</span>
+              <span class="version-pill">v1.4</span>
             </div>
           </div>
         </div>
@@ -48,6 +48,7 @@
                 <h3>Options</h3>
                 <button class="menu-action admin-only" type="button" data-view="articles">Articles</button>
                 <button class="menu-action rights-only" type="button" data-view="rights">Droits techniciens</button>
+                <button class="menu-action control-only" type="button" data-view="control">Pointage admin</button>
                 <button class="menu-action" type="button" data-view="labels">Étiquettes</button>
               </section>
               <section>
@@ -181,11 +182,9 @@
         <div class="content-grid">
           <form id="movementForm" class="panel form-panel">
             <div class="panel-heading">
-              <h2>Mouvement</h2>
+              <h2>Liste de mouvement</h2>
               <button id="resetMovementBtn" class="icon-btn" type="button" title="Nouveau">+</button>
             </div>
-            <label for="movementArticleSelect">Article</label>
-            <select id="movementArticleSelect" required></select>
             <label for="movementTypeSelect">Type</label>
             <select id="movementTypeSelect" required>
               <option value="entry">Entrée stock</option>
@@ -193,15 +192,21 @@
               <option value="transfer">Transfert</option>
               <option value="adjustment">Correction inventaire</option>
             </select>
+            <label for="ticketInput">NumÃ©ro de ticket</label>
+            <input id="ticketInput" type="text" placeholder="Obligatoire pour les sorties" />
             <label for="fromLocationSelect">Depuis</label>
             <select id="fromLocationSelect"></select>
             <label for="toLocationSelect">Vers</label>
             <select id="toLocationSelect"></select>
+            <label for="movementArticleSelect">Article</label>
+            <select id="movementArticleSelect" required></select>
             <label for="movementQtyInput">Quantité</label>
             <input id="movementQtyInput" type="number" min="1" step="1" value="1" required />
             <label for="movementNoteInput">Commentaire</label>
             <input id="movementNoteInput" type="text" placeholder="Ex : retour technicien, pose client, correction" />
-            <button class="primary-btn" type="submit">Valider le mouvement</button>
+            <button id="addMovementLineBtn" class="ghost-btn full-btn" type="button">Ajouter Ã  la liste</button>
+            <div id="movementDraftList" class="draft-list"></div>
+            <button class="primary-btn" type="submit">Valider la liste</button>
           </form>
 
           <section class="panel inventory-panel">
@@ -332,6 +337,18 @@
             </div>
           </div>
           <div id="rightsList" class="rights-list"></div>
+        </section>
+      </section>
+
+      <section id="controlView" class="view">
+        <section class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Pointage admin</h2>
+              <p class="hint">ContrÃ´ler les entrÃ©es, sorties et transferts groupÃ©s.</p>
+            </div>
+          </div>
+          <div id="batchControlList" class="batch-control-list"></div>
         </section>
       </section>
     </main>

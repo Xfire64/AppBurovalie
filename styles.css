@@ -514,6 +514,12 @@ form .primary-btn {
   margin-top: 4px;
 }
 
+.full-btn {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -619,6 +625,51 @@ td span {
   gap: 10px;
 }
 
+.draft-list,
+.batch-control-list {
+  display: grid;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.draft-heading {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.draft-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px;
+  background: #f8fafc;
+}
+
+.draft-item span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.draft-item button {
+  min-height: 32px;
+  border-radius: 6px;
+  background: #fee4e2;
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.small-empty {
+  padding: 10px;
+  font-size: 13px;
+}
+
 .inventory-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 110px 100px;
@@ -702,6 +753,57 @@ td span {
 .rights-list {
   display: grid;
   gap: 12px;
+}
+
+.batch-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+
+.batch-card.checked {
+  border-color: rgba(4, 120, 87, 0.45);
+  background: #f0fdf4;
+}
+
+.batch-head,
+.batch-meta,
+.batch-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.batch-head span,
+.batch-meta span,
+.batch-lines span,
+.batch-actions small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.batch-meta {
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
+.batch-lines {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.batch-actions {
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.batch-actions .primary-btn {
+  width: auto;
 }
 
 .rights-card {
@@ -852,6 +954,14 @@ td span {
   }
 
   .inventory-row {
+    grid-template-columns: 1fr;
+  }
+
+  .draft-item,
+  .batch-head,
+  .batch-meta,
+  .batch-actions {
+    display: grid;
     grid-template-columns: 1fr;
   }
 }

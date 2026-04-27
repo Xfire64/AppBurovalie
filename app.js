@@ -51,6 +51,7 @@ const defaultData = {
     "art-rouleau|depot-site-3": 9,
   },
   movements: [],
+  batches: [],
   currentUserId: "u-admin",
 };
 
@@ -85,10 +86,13 @@ const elements = {
   resetMovementBtn: document.querySelector("#resetMovementBtn"),
   movementArticleSelect: document.querySelector("#movementArticleSelect"),
   movementTypeSelect: document.querySelector("#movementTypeSelect"),
+  ticketInput: document.querySelector("#ticketInput"),
   fromLocationSelect: document.querySelector("#fromLocationSelect"),
   toLocationSelect: document.querySelector("#toLocationSelect"),
   movementQtyInput: document.querySelector("#movementQtyInput"),
   movementNoteInput: document.querySelector("#movementNoteInput"),
+  addMovementLineBtn: document.querySelector("#addMovementLineBtn"),
+  movementDraftList: document.querySelector("#movementDraftList"),
   movementBody: document.querySelector("#movementBody"),
   exportMovementsBtn: document.querySelector("#exportMovementsBtn"),
   inventoryList: document.querySelector("#inventoryList"),
@@ -110,6 +114,7 @@ const elements = {
   appMenuBtn: document.querySelector("#appMenuBtn"),
   appMenu: document.querySelector("#appMenu"),
   logoutBtn: document.querySelector("#logoutBtn"),
+  batchControlList: document.querySelector("#batchControlList"),
 };
 
 let data = loadData();
@@ -119,11 +124,14 @@ let cameraStream = null;
 let scanTimer = 0;
 let barcodeDetector = null;
 let html5QrScanner = null;
+let movementDraft = [];
 
 function loadData() {
   try {
     const stored = JSON.parse(localStorage.getItem(storageKey));
-    return stored ? { ...structuredClone(defaultData), ...stored } : structuredClone(defaultData);
+    const merged = stored ? { ...structuredClone(defaultData), ...stored } : structuredClone(defaultData);
+    merged.batches = merged.batches || [];
+    return merged;
   } catch {
     return structuredClone(defaultData);
   }
@@ -142,6 +150,10 @@ function canSeeAllStocks() {
 }
 
 function canManageRights() {
+  return ["admin", "responsable", "direction"].includes(currentUser().role);
+}
+
+function canPointBatches() {
   return ["admin", "responsable", "direction"].includes(currentUser().role);
 }
 
@@ -269,6 +281,9 @@ function renderUsers() {
   document.querySelectorAll(".rights-only").forEach((element) => {
     element.hidden = !canManageRights();
   });
+  document.querySelectorAll(".control-only").forEach((element) => {
+    element.hidden = !canPointBatches();
+  });
 }
 
 function renderSelects() {
@@ -373,7 +388,7 @@ function renderMovements() {
     return `
       <tr>
         <td>${formatDate(movement.date)}</td>
-        <td>${movementLabel(movement.type)}</td>
+        <td>${movementLabel(movement.type)}${movement.ticketNumber ? `<span>Ticket ${movement.ticketNumber}</span>` : ""}</td>
         <td><strong>${article?.reference || "-"}</strong><span>${article?.name || "Article supprimé"}</span></td>
         <td>${movement.quantity}</td>
         <td>${getLocation(movement.fromLocationId)?.name || "-"}</td>
@@ -382,6 +397,53 @@ function renderMovements() {
       </tr>
     `;
   }).join("") : `<tr><td class="empty" colspan="7">Aucun mouvement.</td></tr>`;
+}
+
+function renderMovementDraft() {
+  elements.movementDraftList.innerHTML = movementDraft.length ? `
+    <div class="draft-heading">Liste en préparation</div>
+    ${movementDraft.map((line, index) => {
+      const article = getArticle(line.articleId);
+      return `
+        <article class="draft-item">
+          <div>
+            <strong>${article?.reference || "-"}</strong>
+            <span>${article?.name || "Article supprimé"} - ${line.quantity} unité(s)</span>
+          </div>
+          <button type="button" data-remove-draft="${index}">Retirer</button>
+        </article>
+      `;
+    }).join("")}
+  ` : `<p class="empty small-empty">Aucune ligne ajoutée.</p>`;
+}
+
+function renderBatchControl() {
+  if (!elements.batchControlList) return;
+  const batches = [...(data.batches || [])].reverse();
+  elements.batchControlList.innerHTML = batches.length ? batches.map((batch) => `
+    <article class="batch-card ${batch.checked ? "checked" : ""}">
+      <div class="batch-head">
+        <div>
+          <strong>${movementLabel(batch.type)}${batch.ticketNumber ? ` - Ticket ${batch.ticketNumber}` : ""}</strong>
+          <span>${formatDate(batch.date)} - ${batch.userName}</span>
+        </div>
+        <span class="badge ${batch.checked ? "ok" : "danger"}">${batch.checked ? "Pointé" : "À pointer"}</span>
+      </div>
+      <div class="batch-meta">
+        <span>Depuis : ${getLocation(batch.fromLocationId)?.name || "-"}</span>
+        <span>Vers : ${getLocation(batch.toLocationId)?.name || "-"}</span>
+      </div>
+      <div class="batch-lines">
+        ${batch.lines.map((line) => {
+          const article = getArticle(line.articleId);
+          return `<span>${article?.reference || "-"} - ${article?.name || "Article supprimé"} : ${line.quantity}</span>`;
+        }).join("")}
+      </div>
+      <div class="batch-actions">
+        ${batch.checked ? `<small>Pointé par ${batch.checkedBy || "-"} le ${formatDate(batch.checkedAt)}</small>` : `<button type="button" class="primary-btn" data-check-batch="${batch.id}">Pointer</button>`}
+      </div>
+    </article>
+  `).join("") : `<p class="empty">Aucun lot de mouvement à pointer.</p>`;
 }
 
 function renderInventory() {
@@ -454,6 +516,11 @@ function renderPermissions() {
   if (!canManageRights() && document.querySelector("#rightsView").classList.contains("active-view")) {
     activateView("dashboard");
   }
+
+  document.querySelector('[data-view="control"]').hidden = !canPointBatches();
+  if (!canPointBatches() && document.querySelector("#controlView").classList.contains("active-view")) {
+    activateView("dashboard");
+  }
 }
 
 function renderRights() {
@@ -498,6 +565,8 @@ function renderAll() {
   renderArticles();
   renderLabels();
   renderRights();
+  renderMovementDraft();
+  renderBatchControl();
 }
 
 function resetArticleForm() {
@@ -566,7 +635,7 @@ function deleteArticle(articleId) {
   renderAll();
 }
 
-function createMovement({ type, articleId, quantity, fromLocationId = "", toLocationId = "", note = "" }) {
+function createMovement({ type, articleId, quantity, fromLocationId = "", toLocationId = "", note = "", batchId = "", ticketNumber = "", skipRender = false }) {
   const article = getArticle(articleId);
   if (!article) {
     setMessage("Article introuvable.", "warning");
@@ -625,27 +694,129 @@ function createMovement({ type, articleId, quantity, fromLocationId = "", toLoca
     fromLocationId,
     toLocationId,
     note,
+    batchId,
+    ticketNumber,
     userId: currentUser().id,
     userName: currentUser().name,
   });
 
   saveData();
-  renderAll();
-  setMessage(`${movementLabel(type)} enregistré pour ${article.reference}.`, "success");
+  if (!skipRender) {
+    renderAll();
+    setMessage(`${movementLabel(type)} enregistré pour ${article.reference}.`, "success");
+  }
   return true;
 }
 
-function submitMovement(event) {
-  event.preventDefault();
-  const type = elements.movementTypeSelect.value;
-  createMovement({
-    type,
-    articleId: elements.movementArticleSelect.value,
-    quantity: elements.movementQtyInput.value,
-    fromLocationId: elements.fromLocationSelect.value,
-    toLocationId: elements.toLocationSelect.value,
+function addMovementLine() {
+  const articleId = elements.movementArticleSelect.value;
+  const quantity = Number(elements.movementQtyInput.value);
+  const article = getArticle(articleId);
+
+  if (!article || !quantity || quantity < 1) {
+    setMessage("Choisis un article et une quantité valide.", "warning");
+    return;
+  }
+
+  movementDraft.push({
+    articleId,
+    quantity,
     note: elements.movementNoteInput.value.trim(),
   });
+  elements.movementQtyInput.value = 1;
+  elements.movementNoteInput.value = "";
+  renderMovementDraft();
+}
+
+function resetMovementDraft() {
+  movementDraft = [];
+  elements.movementForm.reset();
+  elements.movementQtyInput.value = 1;
+  renderMovementDraft();
+}
+
+function createMovementBatch(event) {
+  event.preventDefault();
+  const type = elements.movementTypeSelect.value;
+  const ticketNumber = elements.ticketInput.value.trim();
+  const fromLocationId = elements.fromLocationSelect.value;
+  const toLocationId = elements.toLocationSelect.value;
+
+  if (movementDraft.length === 0) {
+    addMovementLine();
+  }
+
+  if (movementDraft.length === 0) return;
+
+  if (type === "exit" && !ticketNumber) {
+    setMessage("Le numéro de ticket est obligatoire pour une sortie.", "warning");
+    return;
+  }
+
+  const batchId = `lot-${Date.now()}`;
+  const originalStocks = structuredClone(data.stocks);
+  const originalMovements = [...data.movements];
+
+  for (const line of movementDraft) {
+    const ok = createMovement({
+      type,
+      articleId: line.articleId,
+      quantity: line.quantity,
+      fromLocationId,
+      toLocationId,
+      note: line.note,
+      batchId,
+      ticketNumber,
+      skipRender: true,
+    });
+
+    if (!ok) {
+      data.stocks = originalStocks;
+      data.movements = originalMovements;
+      saveData();
+      renderAll();
+      return;
+    }
+  }
+
+  data.batches.push({
+    id: batchId,
+    date: new Date().toISOString(),
+    type,
+    ticketNumber,
+    fromLocationId,
+    toLocationId,
+    lines: movementDraft.map((line) => ({ ...line })),
+    userId: currentUser().id,
+    userName: currentUser().name,
+    checked: false,
+    checkedBy: "",
+    checkedAt: "",
+  });
+
+  movementDraft = [];
+  saveData();
+  renderAll();
+  setMessage("Liste de mouvement validée. Elle apparaît dans le pointage admin.", "success");
+}
+
+function checkBatch(batchId) {
+  data.batches = data.batches.map((batch) => {
+    if (batch.id !== batchId) return batch;
+    return {
+      ...batch,
+      checked: true,
+      checkedBy: currentUser().name,
+      checkedAt: new Date().toISOString(),
+    };
+  });
+  saveData();
+  renderAll();
+  setMessage("Lot pointé.", "success");
+}
+
+function submitMovement(event) {
+  createMovementBatch(event);
 }
 
 function scanCode(mode = "search") {
@@ -852,12 +1023,13 @@ function exportStock() {
 
 function exportMovements() {
   exportCsv("mouvements-appburovalie.csv", [
-    ["Date", "Type", "Article", "Référence", "Quantité", "Depuis", "Vers", "Utilisateur", "Commentaire"],
+    ["Date", "Type", "Ticket", "Article", "Référence", "Quantité", "Depuis", "Vers", "Utilisateur", "Commentaire"],
     ...data.movements.map((movement) => {
       const article = getArticle(movement.articleId);
       return [
         formatDate(movement.date),
         movementLabel(movement.type),
+        movement.ticketNumber || "",
         article?.name || "",
         article?.reference || "",
         movement.quantity,
@@ -949,7 +1121,8 @@ elements.stopCameraBtn.addEventListener("click", () => {
 elements.searchInput.addEventListener("input", renderStock);
 elements.locationFilter.addEventListener("change", renderStock);
 elements.movementForm.addEventListener("submit", submitMovement);
-elements.resetMovementBtn.addEventListener("click", () => elements.movementForm.reset());
+elements.addMovementLineBtn.addEventListener("click", addMovementLine);
+elements.resetMovementBtn.addEventListener("click", resetMovementDraft);
 elements.productForm.addEventListener("submit", saveArticle);
 elements.resetFormBtn.addEventListener("click", resetArticleForm);
 elements.articleSearchInput.addEventListener("input", renderArticles);
@@ -979,6 +1152,19 @@ elements.inventoryList.addEventListener("click", (event) => {
     toLocationId: locationId,
     note: `Inventaire : ancien stock ${oldQuantity}`,
   });
+});
+
+elements.movementDraftList.addEventListener("click", (event) => {
+  const index = event.target.dataset.removeDraft;
+  if (index === undefined) return;
+  movementDraft.splice(Number(index), 1);
+  renderMovementDraft();
+});
+
+elements.batchControlList.addEventListener("click", (event) => {
+  const batchId = event.target.dataset.checkBatch;
+  if (!batchId) return;
+  checkBatch(batchId);
 });
 
 elements.rightsList.addEventListener("change", (event) => {
