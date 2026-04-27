@@ -1,51 +1,194 @@
-const storageKey = "stockscan-products";
+const storageKey = "appburovalie-data-v1";
+
+const defaultData = {
+  users: [
+    { id: "u-admin", name: "Admin Burovalie", role: "admin", locationId: "depot-siege" },
+    { id: "u-tech-1", name: "Technicien 1", role: "technicien", locationId: "veh-tech-1" },
+    { id: "u-resp", name: "Responsable technique", role: "responsable", locationId: "depot-siege" },
+    { id: "u-dir", name: "Direction", role: "direction", locationId: "depot-siege" },
+  ],
+  locations: [
+    { id: "depot-siege", name: "Dépôt siège", type: "depot" },
+    { id: "depot-site-2", name: "Dépôt site 2", type: "depot" },
+    { id: "depot-site-3", name: "Dépôt site 3", type: "depot" },
+    { id: "veh-tech-1", name: "Véhicule technicien 1", type: "vehicle", ownerUserId: "u-tech-1" },
+  ],
+  articles: [
+    {
+      id: "art-toner",
+      name: "Toner noir copieur",
+      reference: "TON-NOIR-01",
+      barcode: "3760123456789",
+      extraCodes: ["3029330003533"],
+      minimum: 4,
+      category: "Consommable",
+    },
+    {
+      id: "art-carte",
+      name: "Carte électronique mise à jour",
+      reference: "MAJ-CARTE-22",
+      barcode: "8710398501218",
+      extraCodes: [],
+      minimum: 2,
+      category: "Pièce",
+    },
+    {
+      id: "art-rouleau",
+      name: "Rouleau d'entraînement",
+      reference: "RUL-ENT-12",
+      barcode: "1234567890128",
+      extraCodes: [],
+      minimum: 3,
+      category: "Pièce",
+    },
+  ],
+  stocks: {
+    "art-toner|depot-siege": 14,
+    "art-toner|depot-site-2": 3,
+    "art-toner|veh-tech-1": 2,
+    "art-carte|depot-siege": 5,
+    "art-carte|veh-tech-1": 1,
+    "art-rouleau|depot-site-3": 9,
+  },
+  movements: [],
+  currentUserId: "u-admin",
+};
 
 const elements = {
-  barcodeInput: document.querySelector("#barcodeInput"),
-  scanBtn: document.querySelector("#scanBtn"),
-  scanMessage: document.querySelector("#scanMessage"),
+  userSelect: document.querySelector("#userSelect"),
   installBtn: document.querySelector("#installBtn"),
+  seedBtn: document.querySelector("#seedBtn"),
+  barcodeInput: document.querySelector("#barcodeInput"),
+  scanQtyInput: document.querySelector("#scanQtyInput"),
+  scanBtn: document.querySelector("#scanBtn"),
+  scanEntryBtn: document.querySelector("#scanEntryBtn"),
+  scanExitBtn: document.querySelector("#scanExitBtn"),
+  scanSearchBtn: document.querySelector("#scanSearchBtn"),
+  scanLocationSelect: document.querySelector("#scanLocationSelect"),
+  scanMessage: document.querySelector("#scanMessage"),
   cameraScanner: document.querySelector("#cameraScanner"),
   cameraVideo: document.querySelector("#cameraVideo"),
   stopCameraBtn: document.querySelector("#stopCameraBtn"),
-  seedBtn: document.querySelector("#seedBtn"),
+  itemCount: document.querySelector("#itemCount"),
+  stockValue: document.querySelector("#stockValue"),
+  lowCount: document.querySelector("#lowCount"),
+  dashboardLowBadge: document.querySelector("#dashboardLowBadge"),
+  dashboardAlerts: document.querySelector("#dashboardAlerts"),
+  movementCount: document.querySelector("#movementCount"),
+  recentMovements: document.querySelector("#recentMovements"),
+  locationSummary: document.querySelector("#locationSummary"),
+  exportStockBtn: document.querySelector("#exportStockBtn"),
+  stockBody: document.querySelector("#stockBody"),
+  searchInput: document.querySelector("#searchInput"),
+  locationFilter: document.querySelector("#locationFilter"),
+  movementForm: document.querySelector("#movementForm"),
+  resetMovementBtn: document.querySelector("#resetMovementBtn"),
+  movementArticleSelect: document.querySelector("#movementArticleSelect"),
+  movementTypeSelect: document.querySelector("#movementTypeSelect"),
+  fromLocationSelect: document.querySelector("#fromLocationSelect"),
+  toLocationSelect: document.querySelector("#toLocationSelect"),
+  movementQtyInput: document.querySelector("#movementQtyInput"),
+  movementNoteInput: document.querySelector("#movementNoteInput"),
+  movementBody: document.querySelector("#movementBody"),
+  exportMovementsBtn: document.querySelector("#exportMovementsBtn"),
+  inventoryList: document.querySelector("#inventoryList"),
+  ordersBody: document.querySelector("#ordersBody"),
+  exportOrdersBtn: document.querySelector("#exportOrdersBtn"),
   productForm: document.querySelector("#productForm"),
   resetFormBtn: document.querySelector("#resetFormBtn"),
   nameInput: document.querySelector("#nameInput"),
+  refInput: document.querySelector("#refInput"),
   codeInput: document.querySelector("#codeInput"),
-  qtyInput: document.querySelector("#qtyInput"),
+  extraCodesInput: document.querySelector("#extraCodesInput"),
   minInput: document.querySelector("#minInput"),
-  locationInput: document.querySelector("#locationInput"),
-  searchInput: document.querySelector("#searchInput"),
-  inventoryBody: document.querySelector("#inventoryBody"),
-  rowTemplate: document.querySelector("#rowTemplate"),
-  itemCount: document.querySelector("#itemCount"),
-  unitCount: document.querySelector("#unitCount"),
-  lowCount: document.querySelector("#lowCount"),
+  categoryInput: document.querySelector("#categoryInput"),
+  articleSearchInput: document.querySelector("#articleSearchInput"),
+  articleBody: document.querySelector("#articleBody"),
+  printLabelsBtn: document.querySelector("#printLabelsBtn"),
+  labelGrid: document.querySelector("#labelGrid"),
 };
 
-let products = loadProducts();
-let editingCode = "";
+let data = loadData();
+let editingArticleId = "";
+let deferredInstallPrompt = null;
 let cameraStream = null;
 let scanTimer = 0;
 let barcodeDetector = null;
 let html5QrScanner = null;
-let deferredInstallPrompt = null;
 
-function loadProducts() {
+function loadData() {
   try {
-    return JSON.parse(localStorage.getItem(storageKey)) || [];
+    const stored = JSON.parse(localStorage.getItem(storageKey));
+    return stored ? { ...structuredClone(defaultData), ...stored } : structuredClone(defaultData);
   } catch {
-    return [];
+    return structuredClone(defaultData);
   }
 }
 
-function saveProducts() {
-  localStorage.setItem(storageKey, JSON.stringify(products));
+function saveData() {
+  localStorage.setItem(storageKey, JSON.stringify(data));
+}
+
+function currentUser() {
+  return data.users.find((user) => user.id === data.currentUserId) || data.users[0];
+}
+
+function canSeeAllStocks() {
+  return ["admin", "responsable", "direction"].includes(currentUser().role);
+}
+
+function visibleLocations() {
+  if (canSeeAllStocks()) return data.locations;
+  return data.locations.filter((location) => location.id === currentUser().locationId);
+}
+
+function getArticle(articleId) {
+  return data.articles.find((article) => article.id === articleId);
+}
+
+function getLocation(locationId) {
+  return data.locations.find((location) => location.id === locationId);
+}
+
+function stockKey(articleId, locationId) {
+  return `${articleId}|${locationId}`;
+}
+
+function getStock(articleId, locationId) {
+  return Number(data.stocks[stockKey(articleId, locationId)] || 0);
+}
+
+function setStock(articleId, locationId, quantity) {
+  data.stocks[stockKey(articleId, locationId)] = Math.max(0, Number(quantity) || 0);
 }
 
 function normalizeCode(code) {
   return code.trim();
+}
+
+function allCodes(article) {
+  return [article.barcode, ...(article.extraCodes || [])].filter(Boolean);
+}
+
+function findArticleByCode(code) {
+  const cleanCode = normalizeCode(code);
+  return data.articles.find((article) => allCodes(article).includes(cleanCode));
+}
+
+function formatDate(value) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function movementLabel(type) {
+  return {
+    entry: "Entrée",
+    exit: "Sortie",
+    transfer: "Transfert",
+    adjustment: "Correction",
+  }[type] || type;
 }
 
 function setMessage(text, type = "") {
@@ -53,84 +196,437 @@ function setMessage(text, type = "") {
   elements.scanMessage.className = `status ${type}`.trim();
 }
 
-function render() {
-  const query = elements.searchInput.value.trim().toLowerCase();
-  const filtered = products.filter((product) => {
-    return [product.name, product.code, product.location].some((value) =>
-      value.toLowerCase().includes(query)
-    );
+function visibleStockRows() {
+  const allowedLocations = new Set(visibleLocations().map((location) => location.id));
+  const rows = [];
+
+  data.articles.forEach((article) => {
+    data.locations.forEach((location) => {
+      if (!allowedLocations.has(location.id)) return;
+      const quantity = getStock(article.id, location.id);
+      rows.push({ article, location, quantity });
+    });
   });
 
-  elements.inventoryBody.innerHTML = "";
-
-  if (filtered.length === 0) {
-    const row = document.createElement("tr");
-    const cell = document.createElement("td");
-    cell.colSpan = 5;
-    cell.className = "empty";
-    cell.textContent = products.length === 0 ? "Aucun article pour le moment." : "Aucun résultat.";
-    row.appendChild(cell);
-    elements.inventoryBody.appendChild(row);
-  }
-
-  filtered.forEach((product) => {
-    const row = elements.rowTemplate.content.firstElementChild.cloneNode(true);
-    const isLow = product.quantity <= product.minimum;
-
-    row.querySelector(".item-name").textContent = product.name;
-    row.querySelector(".item-code").textContent = product.code;
-    row.querySelector(".item-qty").textContent = product.quantity;
-    row.querySelector(".item-location").textContent = product.location || "-";
-    row.querySelector(".item-alert").textContent = isLow ? "Stock bas" : "";
-
-    row.querySelector(".stock-in").addEventListener("click", () => changeStock(product.code, 1));
-    row.querySelector(".stock-out").addEventListener("click", () => changeStock(product.code, -1));
-    row.querySelector(".edit").addEventListener("click", () => fillForm(product));
-    row.querySelector(".delete").addEventListener("click", () => deleteProduct(product.code));
-
-    elements.inventoryBody.appendChild(row);
-  });
-
-  elements.itemCount.textContent = products.length;
-  elements.unitCount.textContent = products.reduce((total, product) => total + product.quantity, 0);
-  elements.lowCount.textContent = products.filter((product) => product.quantity <= product.minimum).length;
+  return rows;
 }
 
-function scanCode() {
-  const code = normalizeCode(elements.barcodeInput.value);
+function lowStockRows() {
+  return visibleStockRows().filter((row) => row.quantity <= row.article.minimum);
+}
 
+function totalStockUnits() {
+  return visibleStockRows().reduce((total, row) => total + row.quantity, 0);
+}
+
+function addOptions(select, options, placeholder = "") {
+  select.innerHTML = "";
+  if (placeholder) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = placeholder;
+    select.appendChild(option);
+  }
+
+  options.forEach((item) => {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = item.name || item.label;
+    select.appendChild(option);
+  });
+}
+
+function renderUsers() {
+  addOptions(elements.userSelect, data.users.map((user) => ({
+    id: user.id,
+    name: `${user.name} - ${user.role}`,
+  })));
+  elements.userSelect.value = currentUser().id;
+
+  document.querySelectorAll(".admin-only").forEach((element) => {
+    element.hidden = !["admin", "responsable"].includes(currentUser().role);
+  });
+}
+
+function renderSelects() {
+  const locations = visibleLocations();
+  addOptions(elements.scanLocationSelect, locations);
+  addOptions(elements.locationFilter, [{ id: "all", name: "Tous les emplacements" }, ...locations]);
+  addOptions(elements.fromLocationSelect, [{ id: "", name: "Aucun" }, ...locations]);
+  addOptions(elements.toLocationSelect, [{ id: "", name: "Aucun" }, ...locations]);
+  addOptions(elements.movementArticleSelect, data.articles.map((article) => ({
+    id: article.id,
+    name: `${article.reference} - ${article.name}`,
+  })));
+
+  elements.scanLocationSelect.value = currentUser().locationId;
+  elements.locationFilter.value = "all";
+}
+
+function renderStats() {
+  elements.itemCount.textContent = data.articles.length;
+  elements.stockValue.textContent = totalStockUnits();
+  elements.lowCount.textContent = lowStockRows().length;
+  elements.dashboardLowBadge.textContent = lowStockRows().length;
+  elements.movementCount.textContent = data.movements.length;
+}
+
+function renderDashboard() {
+  const alerts = lowStockRows().slice(0, 8);
+  elements.dashboardAlerts.innerHTML = alerts.length
+    ? alerts.map(({ article, location, quantity }) => `
+      <article class="list-item">
+        <strong>${article.reference} - ${article.name}</strong>
+        <span>${location.name} : ${quantity} / mini ${article.minimum}</span>
+      </article>
+    `).join("")
+    : `<p class="empty">Aucune alerte de stock.</p>`;
+
+  const recent = [...data.movements].reverse().slice(0, 8);
+  elements.recentMovements.innerHTML = recent.length
+    ? recent.map((movement) => {
+      const article = getArticle(movement.articleId);
+      return `
+        <article class="list-item">
+          <strong>${movementLabel(movement.type)} - ${article?.reference || "Article supprimé"}</strong>
+          <span>${movement.quantity} unité(s), ${formatDate(movement.date)}</span>
+        </article>
+      `;
+    }).join("")
+    : `<p class="empty">Aucun mouvement pour le moment.</p>`;
+
+  elements.locationSummary.innerHTML = visibleLocations().map((location) => {
+    const total = data.articles.reduce((sum, article) => sum + getStock(article.id, location.id), 0);
+    const low = data.articles.filter((article) => getStock(article.id, location.id) <= article.minimum).length;
+    return `
+      <article class="location-card">
+        <strong>${location.name}</strong>
+        <span>${location.type === "vehicle" ? "Véhicule" : "Dépôt"}</span>
+        <b>${total}</b>
+        <small>${low} alerte(s)</small>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderStock() {
+  const query = elements.searchInput.value.trim().toLowerCase();
+  const locationFilter = elements.locationFilter.value || "all";
+  const rows = visibleStockRows().filter(({ article, location }) => {
+    const matchesQuery = [article.name, article.reference, ...allCodes(article), location.name]
+      .join(" ")
+      .toLowerCase()
+      .includes(query);
+    const matchesLocation = locationFilter === "all" || location.id === locationFilter;
+    return matchesQuery && matchesLocation;
+  });
+
+  elements.stockBody.innerHTML = rows.length ? rows.map(({ article, location, quantity }) => {
+    const isLow = quantity <= article.minimum;
+    return `
+      <tr>
+        <td><strong>${article.name}</strong><span>${article.reference}</span></td>
+        <td class="item-code">${article.barcode}</td>
+        <td>${location.name}</td>
+        <td><strong>${quantity}</strong></td>
+        <td>${article.minimum}</td>
+        <td><span class="badge ${isLow ? "danger" : "ok"}">${isLow ? "À commander" : "OK"}</span></td>
+      </tr>
+    `;
+  }).join("") : `<tr><td class="empty" colspan="6">Aucun stock trouvé.</td></tr>`;
+}
+
+function renderMovements() {
+  const visibleLocationIds = new Set(visibleLocations().map((location) => location.id));
+  const movements = data.movements.filter((movement) => {
+    if (canSeeAllStocks()) return true;
+    return visibleLocationIds.has(movement.fromLocationId) || visibleLocationIds.has(movement.toLocationId);
+  }).reverse();
+
+  elements.movementBody.innerHTML = movements.length ? movements.map((movement) => {
+    const article = getArticle(movement.articleId);
+    return `
+      <tr>
+        <td>${formatDate(movement.date)}</td>
+        <td>${movementLabel(movement.type)}</td>
+        <td><strong>${article?.reference || "-"}</strong><span>${article?.name || "Article supprimé"}</span></td>
+        <td>${movement.quantity}</td>
+        <td>${getLocation(movement.fromLocationId)?.name || "-"}</td>
+        <td>${getLocation(movement.toLocationId)?.name || "-"}</td>
+        <td>${movement.userName}</td>
+      </tr>
+    `;
+  }).join("") : `<tr><td class="empty" colspan="7">Aucun mouvement.</td></tr>`;
+}
+
+function renderInventory() {
+  elements.inventoryList.innerHTML = visibleStockRows().map(({ article, location, quantity }) => `
+    <article class="inventory-row">
+      <div>
+        <strong>${article.reference} - ${article.name}</strong>
+        <span>${location.name}</span>
+      </div>
+      <input type="number" min="0" step="1" value="${quantity}" data-inventory-article="${article.id}" data-inventory-location="${location.id}" />
+      <button type="button" data-save-inventory="${article.id}|${location.id}">Valider</button>
+    </article>
+  `).join("");
+}
+
+function renderOrders() {
+  const rows = lowStockRows();
+  elements.ordersBody.innerHTML = rows.length ? rows.map(({ article, location, quantity }) => `
+    <tr>
+      <td><strong>${article.reference}</strong><span>${article.name}</span></td>
+      <td>${location.name}</td>
+      <td>${quantity}</td>
+      <td>${article.minimum}</td>
+      <td><strong>${Math.max(article.minimum - quantity, 1)}</strong></td>
+    </tr>
+  `).join("") : `<tr><td class="empty" colspan="5">Aucun article à commander.</td></tr>`;
+}
+
+function renderArticles() {
+  const query = elements.articleSearchInput.value.trim().toLowerCase();
+  const articles = data.articles.filter((article) =>
+    [article.name, article.reference, article.category, ...allCodes(article)].join(" ").toLowerCase().includes(query)
+  );
+
+  elements.articleBody.innerHTML = articles.length ? articles.map((article) => `
+    <tr>
+      <td><strong>${article.name}</strong><span>${article.category || "-"}</span></td>
+      <td>${article.reference}</td>
+      <td class="item-code">${allCodes(article).join(", ")}</td>
+      <td>${article.minimum}</td>
+      <td>
+        <div class="actions">
+          <button type="button" data-edit-article="${article.id}">Modifier</button>
+          <button class="delete" type="button" data-delete-article="${article.id}">Supprimer</button>
+        </div>
+      </td>
+    </tr>
+  `).join("") : `<tr><td class="empty" colspan="5">Aucun article.</td></tr>`;
+}
+
+function renderLabels() {
+  elements.labelGrid.innerHTML = data.articles.map((article) => `
+    <article class="label-card">
+      <strong>${article.reference}</strong>
+      <span>${article.name}</span>
+      <code>${article.barcode}</code>
+      <div class="barcode-bars">${article.barcode.split("").map((digit) => `<i style="width:${(Number(digit) % 4) + 1}px"></i>`).join("")}</div>
+    </article>
+  `).join("");
+}
+
+function renderPermissions() {
+  const canManageArticles = ["admin", "responsable"].includes(currentUser().role);
+  document.querySelector('[data-view="articles"]').hidden = !canManageArticles;
+  if (!canManageArticles && document.querySelector("#articlesView").classList.contains("active-view")) {
+    activateView("dashboard");
+  }
+}
+
+function renderAll() {
+  renderUsers();
+  renderSelects();
+  renderPermissions();
+  renderStats();
+  renderDashboard();
+  renderStock();
+  renderMovements();
+  renderInventory();
+  renderOrders();
+  renderArticles();
+  renderLabels();
+}
+
+function resetArticleForm() {
+  editingArticleId = "";
+  elements.productForm.reset();
+  elements.minInput.value = 2;
+}
+
+function saveArticle(event) {
+  event.preventDefault();
+  const article = {
+    id: editingArticleId || `art-${Date.now()}`,
+    name: elements.nameInput.value.trim(),
+    reference: elements.refInput.value.trim(),
+    barcode: normalizeCode(elements.codeInput.value),
+    extraCodes: elements.extraCodesInput.value.split(",").map((code) => normalizeCode(code)).filter(Boolean),
+    minimum: Number(elements.minInput.value),
+    category: elements.categoryInput.value.trim(),
+  };
+
+  if (!article.name || !article.reference || !article.barcode) {
+    setMessage("Description, référence et code-barres sont obligatoires.", "warning");
+    return;
+  }
+
+  const usedCode = data.articles.some((item) =>
+    item.id !== article.id && allCodes(item).some((code) => allCodes(article).includes(code))
+  );
+  if (usedCode) {
+    setMessage("Un des codes-barres existe déjà.", "warning");
+    return;
+  }
+
+  if (editingArticleId) {
+    data.articles = data.articles.map((item) => item.id === editingArticleId ? article : item);
+    setMessage("Article modifié.", "success");
+  } else {
+    data.articles.push(article);
+    setMessage("Article ajouté.", "success");
+  }
+
+  saveData();
+  resetArticleForm();
+  renderAll();
+}
+
+function fillArticleForm(articleId) {
+  const article = getArticle(articleId);
+  if (!article) return;
+  editingArticleId = article.id;
+  elements.nameInput.value = article.name;
+  elements.refInput.value = article.reference;
+  elements.codeInput.value = article.barcode;
+  elements.extraCodesInput.value = (article.extraCodes || []).join(", ");
+  elements.minInput.value = article.minimum;
+  elements.categoryInput.value = article.category || "";
+  activateView("articles");
+}
+
+function deleteArticle(articleId) {
+  data.articles = data.articles.filter((article) => article.id !== articleId);
+  Object.keys(data.stocks).forEach((key) => {
+    if (key.startsWith(`${articleId}|`)) delete data.stocks[key];
+  });
+  saveData();
+  renderAll();
+}
+
+function createMovement({ type, articleId, quantity, fromLocationId = "", toLocationId = "", note = "" }) {
+  const article = getArticle(articleId);
+  if (!article) {
+    setMessage("Article introuvable.", "warning");
+    return false;
+  }
+
+  const qty = Number(quantity);
+  if (!qty || qty < 1) {
+    setMessage("Quantité invalide.", "warning");
+    return false;
+  }
+
+  if (type === "entry") {
+    setStock(articleId, toLocationId, getStock(articleId, toLocationId) + qty);
+  }
+
+  if (type === "exit") {
+    if (getStock(articleId, fromLocationId) < qty) {
+      setMessage("Stock insuffisant pour cette sortie.", "warning");
+      return false;
+    }
+    setStock(articleId, fromLocationId, getStock(articleId, fromLocationId) - qty);
+  }
+
+  if (type === "transfer") {
+    if (!fromLocationId || !toLocationId || fromLocationId === toLocationId) {
+      setMessage("Choisis deux emplacements différents.", "warning");
+      return false;
+    }
+    if (getStock(articleId, fromLocationId) < qty) {
+      setMessage("Stock insuffisant pour ce transfert.", "warning");
+      return false;
+    }
+    setStock(articleId, fromLocationId, getStock(articleId, fromLocationId) - qty);
+    setStock(articleId, toLocationId, getStock(articleId, toLocationId) + qty);
+  }
+
+  if (type === "adjustment") {
+    setStock(articleId, toLocationId || fromLocationId, qty);
+  }
+
+  data.movements.push({
+    id: `mvt-${Date.now()}`,
+    date: new Date().toISOString(),
+    type,
+    articleId,
+    quantity: qty,
+    fromLocationId,
+    toLocationId,
+    note,
+    userId: currentUser().id,
+    userName: currentUser().name,
+  });
+
+  saveData();
+  renderAll();
+  setMessage(`${movementLabel(type)} enregistré pour ${article.reference}.`, "success");
+  return true;
+}
+
+function submitMovement(event) {
+  event.preventDefault();
+  const type = elements.movementTypeSelect.value;
+  createMovement({
+    type,
+    articleId: elements.movementArticleSelect.value,
+    quantity: elements.movementQtyInput.value,
+    fromLocationId: elements.fromLocationSelect.value,
+    toLocationId: elements.toLocationSelect.value,
+    note: elements.movementNoteInput.value.trim(),
+  });
+}
+
+function scanCode(mode = "search") {
+  const code = normalizeCode(elements.barcodeInput.value);
   if (!code) {
     startCameraScanner();
     return;
   }
 
-  handleScannedCode(code);
+  handleScannedCode(code, mode);
   elements.barcodeInput.value = "";
 }
 
-function handleScannedCode(code) {
-  const product = products.find((item) => item.code === code);
-
-  if (product) {
-    changeStock(code, 1);
-    setMessage(`${product.name} ajouté au stock.`, "success");
-  } else {
-    resetForm();
+function handleScannedCode(code, mode = "search") {
+  const article = findArticleByCode(code);
+  if (!article) {
     elements.codeInput.value = code;
-    elements.nameInput.focus();
+    activateView("articles");
     setMessage("Nouveau code détecté : complète la fiche article.", "warning");
+    return;
   }
+
+  const locationId = elements.scanLocationSelect.value || currentUser().locationId;
+  const quantity = Number(elements.scanQtyInput.value) || 1;
+
+  if (mode === "entry") {
+    createMovement({ type: "entry", articleId: article.id, quantity, toLocationId: locationId, note: "Scan rapide" });
+    return;
+  }
+
+  if (mode === "exit") {
+    createMovement({ type: "exit", articleId: article.id, quantity, fromLocationId: locationId, note: "Scan rapide" });
+    return;
+  }
+
+  elements.searchInput.value = article.reference;
+  activateView("stock");
+  renderStock();
+  setMessage(`${article.reference} trouvé.`, "success");
 }
 
 async function startCameraScanner() {
   if (!window.isSecureContext) {
     setMessage("La caméra mobile exige HTTPS. Publie l'app ou ouvre-la via une adresse sécurisée.", "warning");
-    elements.barcodeInput.focus();
     return;
   }
 
   if (cameraStream || html5QrScanner) {
-    setMessage("Caméra déjà active : place le code-barres devant l'objectif.", "success");
+    setMessage("Caméra déjà active.", "success");
     return;
   }
 
@@ -146,9 +642,8 @@ async function startCameraScanner() {
     return;
   }
 
-  setMessage("Scanner mobile non chargé. Vérifie la connexion internet ou utilise une douchette/saisie manuelle.", "warning");
+  setMessage("Scanner mobile non chargé. Vérifie la connexion internet.", "warning");
   elements.cameraScanner.hidden = true;
-  elements.barcodeInput.focus();
 }
 
 async function startNativeBarcodeScanner() {
@@ -156,94 +651,62 @@ async function startNativeBarcodeScanner() {
     const formats = await window.BarcodeDetector.getSupportedFormats();
     const wantedFormats = ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"];
     const supportedFormats = wantedFormats.filter((format) => formats.includes(format));
-
-    const detectorOptions = supportedFormats.length ? { formats: supportedFormats } : {};
-    barcodeDetector = new window.BarcodeDetector(detectorOptions);
-
+    barcodeDetector = new window.BarcodeDetector(supportedFormats.length ? { formats: supportedFormats } : {});
     cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: "environment" } },
       audio: false,
     });
-
     elements.cameraVideo.srcObject = cameraStream;
     await elements.cameraVideo.play();
-    setMessage("Caméra active : place le code-barres devant l'objectif.", "success");
     detectBarcodeLoop();
+    setMessage("Caméra active.", "success");
   } catch {
     stopCameraScanner();
     if ("Html5Qrcode" in window) {
       await startHtml5QrScanner();
       return;
     }
-    setMessage("Impossible d'activer la caméra. Autorise la caméra ou utilise la saisie/douchette USB.", "warning");
+    setMessage("Impossible d'activer la caméra.", "warning");
   }
 }
 
 async function startHtml5QrScanner() {
   try {
-    elements.cameraScanner.hidden = false;
     elements.cameraVideo.hidden = true;
     const reader = document.createElement("div");
     reader.id = "qrReader";
     elements.cameraVideo.parentElement.appendChild(reader);
-
     html5QrScanner = new window.Html5Qrcode("qrReader");
-    const mobileFormats = window.Html5QrcodeSupportedFormats
-      ? [
-          window.Html5QrcodeSupportedFormats.EAN_13,
-          window.Html5QrcodeSupportedFormats.EAN_8,
-          window.Html5QrcodeSupportedFormats.CODE_128,
-          window.Html5QrcodeSupportedFormats.CODE_39,
-          window.Html5QrcodeSupportedFormats.UPC_A,
-          window.Html5QrcodeSupportedFormats.UPC_E,
-          window.Html5QrcodeSupportedFormats.QR_CODE,
-        ]
-      : undefined;
-    const scannerOptions = {
-      fps: 10,
-      qrbox: (viewfinderWidth, viewfinderHeight) => {
-        const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
-        return { width: size, height: size };
-      },
-    };
-
-    if (mobileFormats) {
-      scannerOptions.formatsToSupport = mobileFormats;
-    }
-
     await html5QrScanner.start(
       { facingMode: "environment" },
-      scannerOptions,
+      { fps: 10, qrbox: 260 },
       (decodedText) => {
-        const code = normalizeCode(decodedText);
         stopCameraScanner();
-        handleScannedCode(code);
+        elements.barcodeInput.value = decodedText;
+        handleScannedCode(decodedText, "search");
       }
     );
-    setMessage("Scanner mobile actif : place le code-barres dans le cadre.", "success");
+    setMessage("Scanner mobile actif.", "success");
   } catch {
     stopCameraScanner();
-    setMessage("Impossible d'activer le scanner mobile. Autorise la caméra ou utilise la saisie manuelle.", "warning");
+    setMessage("Impossible d'activer le scanner mobile.", "warning");
   }
 }
 
 async function detectBarcodeLoop() {
   if (!barcodeDetector || !cameraStream) return;
-
   try {
     const barcodes = await barcodeDetector.detect(elements.cameraVideo);
     if (barcodes.length > 0) {
       const code = normalizeCode(barcodes[0].rawValue);
       stopCameraScanner();
       elements.barcodeInput.value = code;
-      handleScannedCode(code);
-      elements.barcodeInput.value = "";
+      handleScannedCode(code, "search");
       return;
     }
   } catch {
-    setMessage("Lecture en cours. Garde le code-barres bien éclairé et stable.", "warning");
+    setMessage("Lecture en cours.", "warning");
   }
-
   scanTimer = window.setTimeout(detectBarcodeLoop, 250);
 }
 
@@ -271,105 +734,147 @@ function stopCameraScanner() {
   elements.cameraScanner.hidden = true;
 }
 
-function changeStock(code, amount) {
-  products = products.map((product) => {
-    if (product.code !== code) return product;
-    return {
-      ...product,
-      quantity: Math.max(0, product.quantity + amount),
-    };
+function activateView(viewName) {
+  document.querySelectorAll(".tab").forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.view === viewName);
   });
-  saveProducts();
-  render();
+  document.querySelectorAll(".view").forEach((view) => {
+    view.classList.toggle("active-view", view.id === `${viewName}View`);
+  });
 }
 
-function fillForm(product) {
-  editingCode = product.code;
-  elements.nameInput.value = product.name;
-  elements.codeInput.value = product.code;
-  elements.qtyInput.value = product.quantity;
-  elements.minInput.value = product.minimum;
-  elements.locationInput.value = product.location;
-  elements.nameInput.focus();
+function exportCsv(filename, rows) {
+  const csv = rows.map((row) =>
+    row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(";")
+  ).join("\n");
+  const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
-function resetForm() {
-  editingCode = "";
-  elements.productForm.reset();
-  elements.qtyInput.value = 0;
-  elements.minInput.value = 5;
+function exportStock() {
+  exportCsv("stock-appburovalie.csv", [
+    ["Article", "Référence", "Code", "Emplacement", "Stock", "Minimum"],
+    ...visibleStockRows().map(({ article, location, quantity }) => [
+      article.name,
+      article.reference,
+      article.barcode,
+      location.name,
+      quantity,
+      article.minimum,
+    ]),
+  ]);
 }
 
-function deleteProduct(code) {
-  products = products.filter((product) => product.code !== code);
-  saveProducts();
-  render();
-  setMessage("Article supprimé.", "warning");
+function exportMovements() {
+  exportCsv("mouvements-appburovalie.csv", [
+    ["Date", "Type", "Article", "Référence", "Quantité", "Depuis", "Vers", "Utilisateur", "Commentaire"],
+    ...data.movements.map((movement) => {
+      const article = getArticle(movement.articleId);
+      return [
+        formatDate(movement.date),
+        movementLabel(movement.type),
+        article?.name || "",
+        article?.reference || "",
+        movement.quantity,
+        getLocation(movement.fromLocationId)?.name || "",
+        getLocation(movement.toLocationId)?.name || "",
+        movement.userName,
+        movement.note || "",
+      ];
+    }),
+  ]);
 }
 
-function saveProduct(event) {
-  event.preventDefault();
-
-  const product = {
-    name: elements.nameInput.value.trim(),
-    code: normalizeCode(elements.codeInput.value),
-    quantity: Number(elements.qtyInput.value),
-    minimum: Number(elements.minInput.value),
-    location: elements.locationInput.value.trim(),
-  };
-
-  if (!product.name || !product.code) {
-    setMessage("Le nom et le code-barres sont obligatoires.", "warning");
-    return;
-  }
-
-  const duplicate = products.some((item) => item.code === product.code && item.code !== editingCode);
-  if (duplicate) {
-    setMessage("Ce code-barres existe déjà.", "warning");
-    return;
-  }
-
-  if (editingCode) {
-    products = products.map((item) => (item.code === editingCode ? product : item));
-    setMessage("Article modifié.", "success");
-  } else {
-    products = [...products, product];
-    setMessage("Article ajouté.", "success");
-  }
-
-  saveProducts();
-  resetForm();
-  render();
-  elements.barcodeInput.focus();
+function exportOrders() {
+  exportCsv("a-commander-appburovalie.csv", [
+    ["Article", "Référence", "Emplacement", "Stock", "Minimum", "À commander"],
+    ...lowStockRows().map(({ article, location, quantity }) => [
+      article.name,
+      article.reference,
+      location.name,
+      quantity,
+      article.minimum,
+      Math.max(article.minimum - quantity, 1),
+    ]),
+  ]);
 }
 
-function seedProducts() {
-  products = [
-    { name: "Café en grains 1 kg", code: "3760123456789", quantity: 12, minimum: 5, location: "Rayon A1" },
-    { name: "Gobelets carton x50", code: "3029330003533", quantity: 4, minimum: 8, location: "Rayon B2" },
-    { name: "Sucre en sticks", code: "8710398501218", quantity: 22, minimum: 10, location: "Réserve" },
-  ];
-  saveProducts();
-  resetForm();
-  render();
-  setMessage("Exemple chargé. Tu peux scanner 3760123456789.", "success");
+function seedData() {
+  data = structuredClone(defaultData);
+  saveData();
+  renderAll();
+  setMessage("Données exemple chargées.", "success");
 }
 
-elements.scanBtn.addEventListener("click", scanCode);
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => activateView(tab.dataset.view));
+});
+
+elements.userSelect.addEventListener("change", () => {
+  data.currentUserId = elements.userSelect.value;
+  saveData();
+  renderAll();
+});
+elements.seedBtn.addEventListener("click", seedData);
+elements.scanBtn.addEventListener("click", () => startCameraScanner());
+elements.scanEntryBtn.addEventListener("click", () => scanCode("entry"));
+elements.scanExitBtn.addEventListener("click", () => scanCode("exit"));
+elements.scanSearchBtn.addEventListener("click", () => scanCode("search"));
 elements.barcodeInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
-    scanCode();
+    scanCode("search");
   }
 });
-elements.productForm.addEventListener("submit", saveProduct);
-elements.resetFormBtn.addEventListener("click", resetForm);
-elements.seedBtn.addEventListener("click", seedProducts);
-elements.searchInput.addEventListener("input", render);
 elements.stopCameraBtn.addEventListener("click", () => {
   stopCameraScanner();
   setMessage("Caméra arrêtée.", "warning");
-  elements.barcodeInput.focus();
+});
+
+elements.searchInput.addEventListener("input", renderStock);
+elements.locationFilter.addEventListener("change", renderStock);
+elements.movementForm.addEventListener("submit", submitMovement);
+elements.resetMovementBtn.addEventListener("click", () => elements.movementForm.reset());
+elements.productForm.addEventListener("submit", saveArticle);
+elements.resetFormBtn.addEventListener("click", resetArticleForm);
+elements.articleSearchInput.addEventListener("input", renderArticles);
+elements.exportStockBtn.addEventListener("click", exportStock);
+elements.exportMovementsBtn.addEventListener("click", exportMovements);
+elements.exportOrdersBtn.addEventListener("click", exportOrders);
+elements.printLabelsBtn.addEventListener("click", () => window.print());
+
+elements.articleBody.addEventListener("click", (event) => {
+  const editId = event.target.dataset.editArticle;
+  const deleteId = event.target.dataset.deleteArticle;
+  if (editId) fillArticleForm(editId);
+  if (deleteId) deleteArticle(deleteId);
+});
+
+elements.inventoryList.addEventListener("click", (event) => {
+  const key = event.target.dataset.saveInventory;
+  if (!key) return;
+  const [articleId, locationId] = key.split("|");
+  const input = elements.inventoryList.querySelector(`[data-inventory-article="${articleId}"][data-inventory-location="${locationId}"]`);
+  const oldQuantity = getStock(articleId, locationId);
+  const newQuantity = Number(input.value);
+  createMovement({
+    type: "adjustment",
+    articleId,
+    quantity: newQuantity,
+    toLocationId: locationId,
+    note: `Inventaire : ancien stock ${oldQuantity}`,
+  });
+});
+
+elements.movementTypeSelect.addEventListener("change", () => {
+  const type = elements.movementTypeSelect.value;
+  elements.fromLocationSelect.disabled = type === "entry";
+  elements.toLocationSelect.disabled = type === "exit";
 });
 
 window.addEventListener("beforeinstallprompt", (event) => {
@@ -396,4 +901,4 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
 
 window.addEventListener("beforeunload", stopCameraScanner);
 
-render();
+renderAll();

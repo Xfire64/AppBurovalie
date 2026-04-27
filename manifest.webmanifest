@@ -1,12 +1,12 @@
 {
-  "name": "StockScan - Gestion de stock",
-  "short_name": "StockScan",
-  "description": "Application web basique pour gérer un stock avec lecteur de code-barres.",
+  "name": "AppBurovalie - Gestion de stock",
+  "short_name": "AppBurovalie",
+  "description": "Application web de gestion de stock, dépôts et véhicules techniciens.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f6f7f9",
-  "theme_color": "#0f766e",
+  "theme_color": "#b5122d",
   "orientation": "portrait-primary",
   "icons": [
     {

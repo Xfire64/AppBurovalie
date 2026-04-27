@@ -3,11 +3,11 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="theme-color" content="#b5122d" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="StockScan" />
-    <title>StockScan - Gestion de stock</title>
+    <meta name="apple-mobile-web-app-title" content="AppBurovalie" />
+    <title>AppBurovalie - Gestion de stock</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon.svg" />
@@ -15,20 +15,33 @@
   </head>
   <body>
     <main class="app-shell">
-      <section class="topbar">
-        <div>
-          <p class="eyebrow">Gestion de stock</p>
-          <h1>StockScan</h1>
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">BV</div>
+          <div>
+            <p class="eyebrow">Burovalie</p>
+            <h1>Gestion de stock</h1>
+          </div>
         </div>
         <div class="topbar-actions">
+          <label class="user-switch" for="userSelect">
+            Profil
+            <select id="userSelect"></select>
+          </label>
           <button id="installBtn" class="ghost-btn" type="button" hidden>Installer</button>
-          <button id="seedBtn" class="ghost-btn" type="button">Charger un exemple</button>
+          <button id="seedBtn" class="ghost-btn" type="button">Données exemple</button>
         </div>
-      </section>
+      </header>
 
       <section class="scanner-panel">
         <div class="scan-card">
-          <label for="barcodeInput">Lecteur de code-barres</label>
+          <div class="panel-heading">
+            <div>
+              <h2>Scanner</h2>
+              <p class="hint">Scanner un code, saisir une quantité, puis choisir l'action.</p>
+            </div>
+            <select id="scanLocationSelect" class="compact-select"></select>
+          </div>
           <div class="scan-row">
             <input
               id="barcodeInput"
@@ -38,7 +51,13 @@
               placeholder="Scanner ou saisir un code puis Entrée"
               autofocus
             />
-            <button id="scanBtn" type="button">Scanner</button>
+            <input id="scanQtyInput" class="qty-field" type="number" min="1" step="1" value="1" />
+            <button id="scanBtn" type="button">Caméra</button>
+          </div>
+          <div class="scan-actions">
+            <button id="scanEntryBtn" class="primary-btn" type="button">Entrée</button>
+            <button id="scanExitBtn" class="warn-btn" type="button">Sortie</button>
+            <button id="scanSearchBtn" class="ghost-btn" type="button">Rechercher</button>
           </div>
           <p id="scanMessage" class="status">Prêt à scanner.</p>
 
@@ -59,89 +78,225 @@
             <small>Articles</small>
           </article>
           <article>
-            <span id="unitCount">0</span>
+            <span id="stockValue">0</span>
             <small>Unités</small>
           </article>
           <article>
             <span id="lowCount">0</span>
-            <small>Stock bas</small>
+            <small>À commander</small>
           </article>
         </div>
       </section>
 
-      <section class="content-grid">
-        <form id="productForm" class="panel">
-          <div class="panel-heading">
-            <h2>Article</h2>
-            <button id="resetFormBtn" class="icon-btn" type="button" title="Nouveau">+</button>
-          </div>
+      <nav class="tabs" aria-label="Navigation principale">
+        <button class="tab active" type="button" data-view="dashboard">Dashboard</button>
+        <button class="tab" type="button" data-view="stock">Stock</button>
+        <button class="tab" type="button" data-view="movements">Mouvements</button>
+        <button class="tab" type="button" data-view="inventory">Inventaire</button>
+        <button class="tab" type="button" data-view="orders">À commander</button>
+        <button class="tab admin-only" type="button" data-view="articles">Articles</button>
+        <button class="tab" type="button" data-view="labels">Étiquettes</button>
+      </nav>
 
-          <label for="nameInput">Nom</label>
-          <input id="nameInput" type="text" placeholder="Ex : Café en grains" required />
-
-          <label for="codeInput">Code-barres</label>
-          <input id="codeInput" type="text" placeholder="Ex : 3760123456789" required />
-
-          <div class="two-cols">
-            <div>
-              <label for="qtyInput">Quantité</label>
-              <input id="qtyInput" type="number" min="0" step="1" value="0" required />
+      <section id="dashboardView" class="view active-view">
+        <div class="dashboard-grid">
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>Alertes stock mini</h2>
+              <span id="dashboardLowBadge" class="badge danger">0</span>
             </div>
-            <div>
-              <label for="minInput">Seuil mini</label>
-              <input id="minInput" type="number" min="0" step="1" value="5" required />
+            <div id="dashboardAlerts" class="list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-heading">
+              <h2>Mouvements récents</h2>
+              <span id="movementCount" class="badge">0</span>
             </div>
-          </div>
+            <div id="recentMovements" class="list"></div>
+          </section>
+          <section class="panel full-panel">
+            <div class="panel-heading">
+              <h2>Stocks par emplacement</h2>
+              <button id="exportStockBtn" class="ghost-btn" type="button">Export CSV</button>
+            </div>
+            <div id="locationSummary" class="location-grid"></div>
+          </section>
+        </div>
+      </section>
 
-          <label for="locationInput">Emplacement</label>
-          <input id="locationInput" type="text" placeholder="Ex : Rayon A2" />
-
-          <button class="primary-btn" type="submit">Enregistrer</button>
-        </form>
-
+      <section id="stockView" class="view">
         <section class="panel inventory-panel">
           <div class="panel-heading">
-            <h2>Inventaire</h2>
-            <input id="searchInput" class="search" type="search" placeholder="Rechercher" />
+            <h2>Stock disponible</h2>
+            <div class="filters">
+              <input id="searchInput" class="search" type="search" placeholder="Rechercher article, référence, code" />
+              <select id="locationFilter"></select>
+            </div>
           </div>
-
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>Article</th>
                   <th>Code</th>
+                  <th>Emplacement</th>
                   <th>Stock</th>
-                  <th>Lieu</th>
-                  <th>Actions</th>
+                  <th>Mini</th>
+                  <th>État</th>
                 </tr>
               </thead>
-              <tbody id="inventoryBody"></tbody>
+              <tbody id="stockBody"></tbody>
             </table>
           </div>
         </section>
       </section>
-    </main>
 
-    <template id="rowTemplate">
-      <tr>
-        <td>
-          <strong class="item-name"></strong>
-          <span class="item-alert"></span>
-        </td>
-        <td class="item-code"></td>
-        <td class="item-qty"></td>
-        <td class="item-location"></td>
-        <td>
-          <div class="actions">
-            <button class="stock-in" type="button" title="Entrée stock">+</button>
-            <button class="stock-out" type="button" title="Sortie stock">-</button>
-            <button class="edit" type="button">Modifier</button>
-            <button class="delete" type="button">Supprimer</button>
+      <section id="movementsView" class="view">
+        <div class="content-grid">
+          <form id="movementForm" class="panel form-panel">
+            <div class="panel-heading">
+              <h2>Mouvement</h2>
+              <button id="resetMovementBtn" class="icon-btn" type="button" title="Nouveau">+</button>
+            </div>
+            <label for="movementArticleSelect">Article</label>
+            <select id="movementArticleSelect" required></select>
+            <label for="movementTypeSelect">Type</label>
+            <select id="movementTypeSelect" required>
+              <option value="entry">Entrée stock</option>
+              <option value="exit">Sortie stock</option>
+              <option value="transfer">Transfert</option>
+              <option value="adjustment">Correction inventaire</option>
+            </select>
+            <label for="fromLocationSelect">Depuis</label>
+            <select id="fromLocationSelect"></select>
+            <label for="toLocationSelect">Vers</label>
+            <select id="toLocationSelect"></select>
+            <label for="movementQtyInput">Quantité</label>
+            <input id="movementQtyInput" type="number" min="1" step="1" value="1" required />
+            <label for="movementNoteInput">Commentaire</label>
+            <input id="movementNoteInput" type="text" placeholder="Ex : retour technicien, pose client, correction" />
+            <button class="primary-btn" type="submit">Valider le mouvement</button>
+          </form>
+
+          <section class="panel inventory-panel">
+            <div class="panel-heading">
+              <h2>Historique</h2>
+              <button id="exportMovementsBtn" class="ghost-btn" type="button">Export CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Article</th>
+                    <th>Qté</th>
+                    <th>Depuis</th>
+                    <th>Vers</th>
+                    <th>Utilisateur</th>
+                  </tr>
+                </thead>
+                <tbody id="movementBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="inventoryView" class="view">
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Inventaire rapide</h2>
+            <p class="hint">Saisis le stock réel, puis valide pour créer une correction historisée.</p>
           </div>
-        </td>
-      </tr>
-    </template>
+          <div id="inventoryList" class="inventory-list"></div>
+        </section>
+      </section>
+
+      <section id="ordersView" class="view">
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Articles à commander</h2>
+            <button id="exportOrdersBtn" class="ghost-btn" type="button">Export CSV</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Article</th>
+                  <th>Emplacement</th>
+                  <th>Stock</th>
+                  <th>Minimum</th>
+                  <th>À commander</th>
+                </tr>
+              </thead>
+              <tbody id="ordersBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="articlesView" class="view">
+        <div class="content-grid">
+          <form id="productForm" class="panel form-panel">
+            <div class="panel-heading">
+              <h2>Article</h2>
+              <button id="resetFormBtn" class="icon-btn" type="button" title="Nouveau">+</button>
+            </div>
+            <label for="nameInput">Description</label>
+            <input id="nameInput" type="text" placeholder="Ex : Carte mère copieur" required />
+            <label for="refInput">Référence</label>
+            <input id="refInput" type="text" placeholder="Ex : REF-2048" required />
+            <label for="codeInput">Code-barres principal</label>
+            <input id="codeInput" type="text" placeholder="Ex : 3760123456789" required />
+            <label for="extraCodesInput">Autres codes-barres</label>
+            <input id="extraCodesInput" type="text" placeholder="Séparer par des virgules" />
+            <div class="two-cols">
+              <div>
+                <label for="minInput">Seuil mini</label>
+                <input id="minInput" type="number" min="0" step="1" value="2" required />
+              </div>
+              <div>
+                <label for="categoryInput">Catégorie</label>
+                <input id="categoryInput" type="text" placeholder="Pièce, consommable..." />
+              </div>
+            </div>
+            <button class="primary-btn" type="submit">Enregistrer l'article</button>
+          </form>
+
+          <section class="panel inventory-panel">
+            <div class="panel-heading">
+              <h2>Catalogue</h2>
+              <input id="articleSearchInput" class="search" type="search" placeholder="Rechercher" />
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th>Référence</th>
+                    <th>Codes</th>
+                    <th>Mini</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="articleBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="labelsView" class="view">
+        <section class="panel">
+          <div class="panel-heading">
+            <h2>Étiquettes</h2>
+            <button id="printLabelsBtn" class="ghost-btn" type="button">Imprimer</button>
+          </div>
+          <div id="labelGrid" class="label-grid"></div>
+        </section>
+      </section>
+    </main>
 
     <script src="https://unpkg.com/html5-qrcode" defer></script>
     <script src="app.js" defer></script>
