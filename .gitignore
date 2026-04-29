@@ -1,0 +1,10 @@
+node_modules/
+.env
+backend/.env
+backend/node_modules/
+backend/dist/
+*.log
+Questionnaire_Cahier_des_charges_AppBurovalie.*
+Cahier_des_charges_AppBurovalie.*
+generate_questionnaire_*.py
+generate_cahier_des_charges.py

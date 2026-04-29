@@ -1,0 +1,28 @@
+{
+  "name": "appburovalie-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API AppBurovalie pour gestion de stock, mouvements et pointage.",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "prisma db seed"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@prisma/client": "^6.1.0",
+    "bcryptjs": "^2.4.3",
+    "fastify": "^5.2.1",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "prisma": "^6.1.0"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  }
+}

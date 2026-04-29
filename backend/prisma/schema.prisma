@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  TECHNICIEN
+  RESPONSABLE
+  DIRECTION
+}
+
+enum LocationType {
+  DEPOT
+  VEHICULE
+}
+
+enum MovementType {
+  ENTRY
+  EXIT
+  TRANSFER
+  ADJUSTMENT
+}
+
+model User {
+  id                String               @id @default(cuid())
+  name              String
+  email             String               @unique
+  passwordHash      String
+  role              Role
+  primaryLocationId String?
+  primaryLocation   Location?            @relation("PrimaryLocation", fields: [primaryLocationId], references: [id])
+  allowedLocations  UserLocationAccess[]
+  movements         Movement[]
+  batches           MovementBatch[]
+  checkedBatches    MovementBatch[]      @relation("CheckedBy")
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+}
+
+model Location {
+  id             String               @id @default(cuid())
+  name           String
+  type           LocationType
+  primaryUsers   User[]               @relation("PrimaryLocation")
+  allowedUsers   UserLocationAccess[]
+  stocks         Stock[]
+  movementsFrom  Movement[]           @relation("MovementFrom")
+  movementsTo    Movement[]           @relation("MovementTo")
+  batchesFrom    MovementBatch[]      @relation("BatchFrom")
+  batchesTo      MovementBatch[]      @relation("BatchTo")
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+}
+
+model UserLocationAccess {
+  userId     String
+  locationId String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, locationId])
+}
+
+model Article {
+  id          String           @id @default(cuid())
+  reference   String           @unique
+  description String
+  category    String?
+  minimum     Int              @default(0)
+  barcodes    ArticleBarcode[]
+  stocks      Stock[]
+  movements   Movement[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model ArticleBarcode {
+  id        String  @id @default(cuid())
+  code      String  @unique
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model Stock {
+  articleId  String
+  locationId String
+  quantity   Int      @default(0)
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  updatedAt  DateTime @updatedAt
+
+  @@id([articleId, locationId])
+}
+
+model MovementBatch {
+  id             String       @id @default(cuid())
+  type           MovementType
+  ticketNumber   String?
+  fromLocationId String?
+  toLocationId   String?
+  fromLocation   Location?    @relation("BatchFrom", fields: [fromLocationId], references: [id])
+  toLocation     Location?    @relation("BatchTo", fields: [toLocationId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  checked        Boolean      @default(false)
+  checkedById    String?
+  checkedBy      User?        @relation("CheckedBy", fields: [checkedById], references: [id])
+  checkedAt      DateTime?
+  movements      Movement[]
+  createdAt      DateTime     @default(now())
+}
+
+model Movement {
+  id             String        @id @default(cuid())
+  type           MovementType
+  quantity       Int
+  note           String?
+  ticketNumber   String?
+  articleId      String
+  article        Article       @relation(fields: [articleId], references: [id])
+  fromLocationId String?
+  toLocationId   String?
+  fromLocation   Location?     @relation("MovementFrom", fields: [fromLocationId], references: [id])
+  toLocation     Location?     @relation("MovementTo", fields: [toLocationId], references: [id])
+  batchId        String?
+  batch          MovementBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  createdAt      DateTime      @default(now())
+}
