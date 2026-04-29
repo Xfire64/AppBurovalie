@@ -22,7 +22,7 @@
             <p class="eyebrow">Burovalie</p>
             <div class="title-row">
               <h1>Gestion de stock</h1>
-              <span class="version-pill">v1.5</span>
+              <span class="version-pill">v1.6</span>
             </div>
           </div>
         </div>
@@ -37,7 +37,25 @@
             </button>
             <div id="appMenu" class="app-menu-panel" hidden>
               <section>
-                <h3>Connexion</h3>
+                <h3>Connexion serveur</h3>
+                <label class="user-switch" for="apiUrlInput">
+                  URL API
+                  <input id="apiUrlInput" type="url" placeholder="http://15.188.3.163:3000" />
+                </label>
+                <label class="user-switch" for="apiEmailInput">
+                  Email
+                  <input id="apiEmailInput" type="email" placeholder="admin@appburovalie.local" />
+                </label>
+                <label class="user-switch" for="apiPasswordInput">
+                  Mot de passe
+                  <input id="apiPasswordInput" type="password" placeholder="Mot de passe" />
+                </label>
+                <button id="serverLoginBtn" class="menu-action" type="button">Connexion API</button>
+                <button id="serverLogoutBtn" class="menu-action" type="button">Quitter le mode serveur</button>
+                <p id="serverStatus" class="menu-status">Mode démo local.</p>
+              </section>
+              <section>
+                <h3>Profil local</h3>
                 <label class="user-switch" for="userSelect">
                   Profil utilisateur
                   <select id="userSelect"></select>

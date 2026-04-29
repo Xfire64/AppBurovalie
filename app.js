@@ -1,4 +1,6 @@
 const storageKey = "appburovalie-data-v1";
+const sessionKey = "appburovalie-api-session";
+const defaultApiUrl = "http://15.188.3.163:3000";
 
 const defaultData = {
   users: [
@@ -57,6 +59,12 @@ const defaultData = {
 
 const elements = {
   userSelect: document.querySelector("#userSelect"),
+  apiUrlInput: document.querySelector("#apiUrlInput"),
+  apiEmailInput: document.querySelector("#apiEmailInput"),
+  apiPasswordInput: document.querySelector("#apiPasswordInput"),
+  serverLoginBtn: document.querySelector("#serverLoginBtn"),
+  serverLogoutBtn: document.querySelector("#serverLogoutBtn"),
+  serverStatus: document.querySelector("#serverStatus"),
   installBtn: document.querySelector("#installBtn"),
   seedBtn: document.querySelector("#seedBtn"),
   barcodeInput: document.querySelector("#barcodeInput"),
@@ -130,6 +138,7 @@ let movementDraft = [];
 let lastDetectedCode = "";
 let stableDetectionCount = 0;
 let lastAcceptedScanAt = 0;
+let apiSession = loadApiSession();
 
 function loadData() {
   try {
@@ -144,6 +153,45 @@ function loadData() {
 
 function saveData() {
   localStorage.setItem(storageKey, JSON.stringify(data));
+}
+
+function loadApiSession() {
+  try {
+    return JSON.parse(localStorage.getItem(sessionKey)) || {
+      apiUrl: defaultApiUrl,
+      token: "",
+      user: null,
+    };
+  } catch {
+    return { apiUrl: defaultApiUrl, token: "", user: null };
+  }
+}
+
+function saveApiSession() {
+  localStorage.setItem(sessionKey, JSON.stringify(apiSession));
+}
+
+function isApiMode() {
+  return Boolean(apiSession.token);
+}
+
+async function apiFetch(path, options = {}) {
+  const baseUrl = (apiSession.apiUrl || defaultApiUrl).replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(apiSession.token ? { Authorization: `Bearer ${apiSession.token}` } : {}),
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `HTTP_${response.status}`);
+  }
+
+  return response.status === 204 ? null : response.json();
 }
 
 function currentUser() {
@@ -273,6 +321,101 @@ function addOptions(select, options, placeholder = "") {
   });
 }
 
+function apiRoleToLocal(role) {
+  return String(role || "").toLowerCase();
+}
+
+function apiTypeToLocal(type) {
+  return String(type || "").toLowerCase() === "vehicule" ? "vehicle" : "depot";
+}
+
+function apiMovementToLocal(type) {
+  return {
+    ENTRY: "entry",
+    EXIT: "exit",
+    TRANSFER: "transfer",
+    ADJUSTMENT: "adjustment",
+  }[type] || String(type || "").toLowerCase();
+}
+
+function localMovementToApi(type) {
+  return {
+    entry: "ENTRY",
+    exit: "EXIT",
+    transfer: "TRANSFER",
+    adjustment: "ADJUSTMENT",
+  }[type] || String(type || "").toUpperCase();
+}
+
+function articleFromApi(article) {
+  const codes = article.barcodes?.map((barcode) => barcode.code) || [];
+  return {
+    id: article.id,
+    name: article.description,
+    reference: article.reference,
+    barcode: codes[0] || "",
+    extraCodes: codes.slice(1),
+    minimum: article.minimum || 0,
+    category: article.category || "",
+  };
+}
+
+function locationFromApi(location) {
+  return {
+    id: location.id,
+    name: location.name,
+    type: apiTypeToLocal(location.type),
+  };
+}
+
+function userFromApi(user) {
+  return {
+    id: user.id,
+    name: user.name,
+    role: apiRoleToLocal(user.role),
+    locationId: user.primaryLocationId,
+    allowedLocationIds: user.allowedLocationIds || [],
+  };
+}
+
+function movementFromApi(movement) {
+  return {
+    id: movement.id,
+    date: movement.createdAt,
+    type: apiMovementToLocal(movement.type),
+    articleId: movement.articleId,
+    quantity: movement.quantity,
+    fromLocationId: movement.fromLocationId || "",
+    toLocationId: movement.toLocationId || "",
+    note: movement.note || "",
+    batchId: movement.batchId || "",
+    ticketNumber: movement.ticketNumber || "",
+    userId: movement.userId,
+    userName: movement.user?.name || "",
+  };
+}
+
+function batchFromApi(batch) {
+  return {
+    id: batch.id,
+    date: batch.createdAt,
+    type: apiMovementToLocal(batch.type),
+    ticketNumber: batch.ticketNumber || "",
+    fromLocationId: batch.fromLocationId || "",
+    toLocationId: batch.toLocationId || "",
+    lines: (batch.movements || []).map((movement) => ({
+      articleId: movement.articleId,
+      quantity: movement.quantity,
+      note: movement.note || "",
+    })),
+    userId: batch.userId,
+    userName: batch.user?.name || "",
+    checked: batch.checked,
+    checkedBy: batch.checkedBy?.name || "",
+    checkedAt: batch.checkedAt || "",
+  };
+}
+
 function renderUsers() {
   addOptions(elements.userSelect, data.users.map((user) => ({
     id: user.id,
@@ -289,6 +432,12 @@ function renderUsers() {
   document.querySelectorAll(".control-only").forEach((element) => {
     element.hidden = !canPointBatches();
   });
+
+  elements.apiUrlInput.value = apiSession.apiUrl || defaultApiUrl;
+  elements.serverStatus.textContent = isApiMode()
+    ? `Connecté API : ${apiSession.user?.name || currentUser().name}`
+    : "Mode démo local.";
+  elements.serverStatus.classList.toggle("online", isApiMode());
 }
 
 function renderSelects() {
@@ -605,6 +754,74 @@ function renderAll() {
   renderBatchControl();
 }
 
+async function loginServer() {
+  apiSession.apiUrl = elements.apiUrlInput.value.trim() || defaultApiUrl;
+  const email = elements.apiEmailInput.value.trim();
+  const password = elements.apiPasswordInput.value;
+
+  try {
+    const result = await apiFetch("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    apiSession.token = result.token;
+    apiSession.user = result.user;
+    saveApiSession();
+    elements.apiPasswordInput.value = "";
+    await loadServerData();
+    closeAppMenu();
+    setMessage("Connexion API réussie.", "success");
+  } catch (error) {
+    setMessage(`Connexion API impossible : ${error.message}`, "warning");
+  }
+}
+
+function logoutServer() {
+  apiSession = { apiUrl: elements.apiUrlInput.value.trim() || defaultApiUrl, token: "", user: null };
+  saveApiSession();
+  data = loadData();
+  renderAll();
+  setMessage("Retour au mode démo local.", "warning");
+}
+
+async function loadServerData() {
+  if (!isApiMode()) return;
+
+  const [me, locations, articles, stocks, movements] = await Promise.all([
+    apiFetch("/auth/me"),
+    apiFetch("/locations"),
+    apiFetch("/articles"),
+    apiFetch("/stocks"),
+    apiFetch("/movements?limit=500"),
+  ]);
+
+  let users = [me.user];
+  let batches = [];
+
+  if (["ADMIN", "RESPONSABLE", "DIRECTION"].includes(me.user.role)) {
+    users = await apiFetch("/users");
+    batches = await apiFetch("/batches");
+  }
+
+  const stockMap = {};
+  stocks.forEach((stock) => {
+    stockMap[stockKey(stock.articleId, stock.locationId)] = stock.quantity;
+  });
+
+  data = {
+    users: users.map(userFromApi),
+    locations: locations.map(locationFromApi),
+    articles: articles.map(articleFromApi),
+    stocks: stockMap,
+    movements: movements.map(movementFromApi),
+    batches: batches.map(batchFromApi),
+    currentUserId: me.user.id,
+  };
+
+  saveData();
+  renderAll();
+}
+
 function resetArticleForm() {
   editingArticleId = "";
   elements.productForm.reset();
@@ -633,6 +850,26 @@ function saveArticle(event) {
   );
   if (usedCode) {
     setMessage("Un des codes-barres existe déjà.", "warning");
+    return;
+  }
+
+  if (isApiMode()) {
+    apiFetch("/articles", {
+      method: "POST",
+      body: JSON.stringify({
+        reference: article.reference,
+        description: article.name,
+        category: article.category,
+        minimum: article.minimum,
+        barcodes: allCodes(article),
+      }),
+    })
+      .then(loadServerData)
+      .then(() => {
+        resetArticleForm();
+        setMessage("Article ajouté sur le serveur.", "success");
+      })
+      .catch((error) => setMessage(`Erreur API : ${error.message}`, "warning"));
     return;
   }
 
@@ -789,6 +1026,30 @@ function createMovementBatch(event) {
     return;
   }
 
+  if (isApiMode()) {
+    apiFetch("/movements/batches", {
+      method: "POST",
+      body: JSON.stringify({
+        type: localMovementToApi(type),
+        ticketNumber,
+        fromLocationId: fromLocationId || null,
+        toLocationId: toLocationId || null,
+        lines: movementDraft.map((line) => ({
+          articleId: line.articleId,
+          quantity: line.quantity,
+          note: line.note,
+        })),
+      }),
+    })
+      .then(() => {
+        movementDraft = [];
+        return loadServerData();
+      })
+      .then(() => setMessage("Liste envoyée au serveur.", "success"))
+      .catch((error) => setMessage(`Erreur API : ${error.message}`, "warning"));
+    return;
+  }
+
   const batchId = `lot-${Date.now()}`;
   const originalStocks = structuredClone(data.stocks);
   const originalMovements = [...data.movements];
@@ -837,6 +1098,14 @@ function createMovementBatch(event) {
 }
 
 function checkBatch(batchId) {
+  if (isApiMode()) {
+    apiFetch(`/batches/${batchId}/check`, { method: "PATCH" })
+      .then(loadServerData)
+      .then(() => setMessage("Lot pointé sur le serveur.", "success"))
+      .catch((error) => setMessage(`Erreur API : ${error.message}`, "warning"));
+    return;
+  }
+
   data.batches = data.batches.map((batch) => {
     if (batch.id !== batchId) return batch;
     return {
@@ -1138,6 +1407,17 @@ function exportOrders() {
 }
 
 function updateTechnicianRights(userId, selectedIds) {
+  if (isApiMode()) {
+    apiFetch(`/users/${userId}/locations`, {
+      method: "PATCH",
+      body: JSON.stringify({ locationIds: selectedIds }),
+    })
+      .then(loadServerData)
+      .then(() => setMessage("Droits technicien mis à jour sur le serveur.", "success"))
+      .catch((error) => setMessage(`Erreur API : ${error.message}`, "warning"));
+    return;
+  }
+
   data.users = data.users.map((user) => {
     if (user.id !== userId) return user;
     const ids = new Set(selectedIds);
@@ -1183,6 +1463,8 @@ elements.logoutBtn.addEventListener("click", () => {
   activateView("dashboard");
   setMessage("Déconnexion simulée. Retour au profil Admin.", "warning");
 });
+elements.serverLoginBtn.addEventListener("click", loginServer);
+elements.serverLogoutBtn.addEventListener("click", logoutServer);
 elements.seedBtn.addEventListener("click", seedData);
 elements.scanBtn.addEventListener("click", () => startCameraScanner());
 elements.scanEntryBtn.addEventListener("click", () => scanCode("entry"));
@@ -1297,3 +1579,8 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
 window.addEventListener("beforeunload", stopCameraScanner);
 
 renderAll();
+if (isApiMode()) {
+  loadServerData().catch((error) => {
+    setMessage(`API indisponible : ${error.message}. Mode local conservé.`, "warning");
+  });
+}
