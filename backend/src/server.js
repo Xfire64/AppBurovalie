@@ -66,6 +66,50 @@ app.get("/users", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION")
   return users.map(publicUser);
 });
 
+app.post("/users", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION") }, async (request, reply) => {
+  const { name, email, password, role = "TECHNICIEN", primaryLocationId, allowedLocationIds = [] } = request.body || {};
+  const normalizedRole = String(role).toUpperCase();
+
+  if (!name || !email || !password || !primaryLocationId) {
+    return reply.code(400).send({ error: "MISSING_FIELDS" });
+  }
+  if (String(password).length < 6) {
+    return reply.code(400).send({ error: "PASSWORD_TOO_SHORT" });
+  }
+  if (!["ADMIN", "TECHNICIEN", "RESPONSABLE", "DIRECTION"].includes(normalizedRole)) {
+    return reply.code(400).send({ error: "INVALID_ROLE" });
+  }
+
+  const location = await prisma.location.findUnique({ where: { id: primaryLocationId } });
+  if (!location) {
+    return reply.code(400).send({ error: "LOCATION_NOT_FOUND" });
+  }
+
+  const exists = await prisma.user.findUnique({ where: { email } });
+  if (exists) {
+    return reply.code(409).send({ error: "EMAIL_ALREADY_EXISTS" });
+  }
+
+  const ids = new Set(Array.isArray(allowedLocationIds) ? allowedLocationIds : []);
+  ids.add(primaryLocationId);
+
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email,
+      passwordHash: bcrypt.hashSync(password, 10),
+      role: normalizedRole,
+      primaryLocationId,
+      allowedLocations: {
+        create: [...ids].map((locationId) => ({ locationId })),
+      },
+    },
+    include: { allowedLocations: true, primaryLocation: true },
+  });
+
+  return reply.code(201).send(publicUser(user));
+});
+
 app.patch("/users/:id/locations", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION") }, async (request) => {
   const locationIds = request.body?.locationIds || [];
   const user = await prisma.user.findUnique({ where: { id: request.params.id } });

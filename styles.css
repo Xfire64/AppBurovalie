@@ -14,6 +14,22 @@
   --shadow: 0 16px 40px rgba(17, 17, 17, 0.09);
 }
 
+body.dark-mode {
+  color-scheme: dark;
+  --bg: #101418;
+  --panel: #171d23;
+  --ink: #edf2f7;
+  --muted: #a7b0bd;
+  --line: #303946;
+  --accent: #ef405f;
+  --accent-dark: #b5122d;
+  --black: #0b0f14;
+  --warn: #f59e0b;
+  --danger: #fb7185;
+  --ok: #34d399;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -46,7 +62,7 @@ body.locked .app-shell {
   width: min(460px, 100%);
   border-radius: 10px;
   padding: 24px;
-  background: #fff;
+  background: var(--panel);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
 }
 
@@ -238,7 +254,7 @@ h2 {
 label {
   display: block;
   margin: 0 0 7px;
-  color: #344054;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 800;
 }
@@ -255,7 +271,7 @@ select {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 9px 11px;
-  background: #fff;
+  background: var(--panel);
   color: var(--ink);
 }
 
@@ -302,14 +318,14 @@ select:focus {
 }
 
 .warn-btn {
-  background: #fef3c7;
-  color: #92400e;
+  background: color-mix(in srgb, var(--warn) 18%, var(--panel) 82%);
+  color: var(--warn);
 }
 
 .ghost-btn,
 .icon-btn {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--panel);
   color: var(--ink);
 }
 
@@ -454,7 +470,7 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 10px;
-  background: #fff;
+  background: var(--panel);
   box-shadow: var(--shadow);
 }
 
@@ -472,7 +488,7 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 0 13px;
-  background: #fff;
+  background: var(--panel);
   color: var(--ink);
   font-weight: 800;
   text-align: left;
@@ -500,7 +516,7 @@ select:focus {
   gap: 3px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  background: #fff;
+  background: var(--panel);
   padding: 0;
 }
 
@@ -509,7 +525,7 @@ select:focus {
   width: 16px;
   height: 2px;
   border-radius: 999px;
-  background: var(--black);
+  background: var(--ink);
 }
 
 .app-menu-panel {
@@ -523,7 +539,7 @@ select:focus {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
-  background: #fff;
+  background: var(--panel);
   box-shadow: var(--shadow);
 }
 
@@ -544,14 +560,14 @@ select:focus {
   border: 1px solid transparent;
   border-radius: 6px;
   padding: 0 11px;
-  background: #fff;
+  background: var(--panel);
   color: var(--ink);
   font-weight: 800;
   text-align: left;
 }
 
 .menu-action:hover {
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--panel) 82%, var(--accent) 18%);
 }
 
 .menu-action.active {
@@ -564,7 +580,7 @@ select:focus {
 .menu-action:disabled {
   cursor: not-allowed;
   color: var(--muted);
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--panel) 88%, var(--line) 12%);
 }
 
 .menu-status {
@@ -576,6 +592,25 @@ select:focus {
 
 .menu-status.online {
   color: var(--ok);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: color-mix(in srgb, var(--panel) 92%, var(--line) 8%);
+  color: var(--ink);
+}
+
+.toggle-row input {
+  width: 18px;
+  min-height: 18px;
 }
 
 .view {
@@ -672,19 +707,19 @@ td span {
   min-height: 26px;
   border-radius: 999px;
   padding: 0 9px;
-  background: #eef2f6;
-  color: #344054;
+  background: color-mix(in srgb, var(--panel) 78%, var(--line) 22%);
+  color: var(--ink);
   font-size: 12px;
   font-weight: 900;
 }
 
 .badge.danger {
-  background: #fee4e2;
+  background: color-mix(in srgb, var(--danger) 18%, var(--panel) 82%);
   color: var(--danger);
 }
 
 .badge.ok {
-  background: #d1fae5;
+  background: color-mix(in srgb, var(--ok) 18%, var(--panel) 82%);
   color: var(--ok);
 }
 
@@ -757,7 +792,7 @@ td span {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 9px;
-  background: #f8fafc;
+  background: color-mix(in srgb, var(--panel) 88%, var(--line) 12%);
 }
 
 .draft-item span {
@@ -770,7 +805,7 @@ td span {
 .draft-item button {
   min-height: 32px;
   border-radius: 6px;
-  background: #fee4e2;
+  background: color-mix(in srgb, var(--danger) 18%, var(--panel) 82%);
   color: var(--danger);
   font-weight: 800;
 }
@@ -817,13 +852,13 @@ td span {
   min-height: 32px;
   border-radius: 6px;
   padding: 0 10px;
-  background: #eef2f6;
+  background: color-mix(in srgb, var(--panel) 78%, var(--line) 22%);
   color: var(--ink);
   font-weight: 800;
 }
 
 .actions .delete {
-  background: #fee4e2;
+  background: color-mix(in srgb, var(--danger) 18%, var(--panel) 82%);
   color: var(--danger);
 }
 
@@ -838,7 +873,7 @@ td span {
   border: 1px dashed #111;
   border-radius: 6px;
   padding: 12px;
-  background: #fff;
+  background: var(--panel);
 }
 
 .label-card span,
@@ -860,21 +895,40 @@ td span {
   background: #111;
 }
 
+.account-list,
 .rights-list {
   display: grid;
   gap: 12px;
+}
+
+.account-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--panel);
+}
+
+.account-card div > span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .batch-card {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px;
-  background: #fff;
+  background: var(--panel);
 }
 
 .batch-card.checked {
   border-color: rgba(4, 120, 87, 0.45);
-  background: #f0fdf4;
+  background: color-mix(in srgb, var(--ok) 12%, var(--panel) 88%);
 }
 
 .batch-head,
@@ -951,7 +1005,7 @@ td span {
   overflow: hidden;
   height: 8px;
   border-radius: 999px;
-  background: #eef2f6;
+  background: color-mix(in srgb, var(--panel) 78%, var(--line) 22%);
 }
 
 .top-bar i {

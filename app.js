@@ -1,5 +1,6 @@
 const storageKey = "appburovalie-data-v1";
 const sessionKey = "appburovalie-api-session";
+const themeKey = "appburovalie-theme";
 const defaultApiUrl = "http://15.188.3.163:3000";
 
 const defaultData = {
@@ -122,10 +123,19 @@ const elements = {
   articleBody: document.querySelector("#articleBody"),
   printLabelsBtn: document.querySelector("#printLabelsBtn"),
   labelGrid: document.querySelector("#labelGrid"),
+  accountForm: document.querySelector("#accountForm"),
+  accountNameInput: document.querySelector("#accountNameInput"),
+  accountEmailInput: document.querySelector("#accountEmailInput"),
+  accountPasswordInput: document.querySelector("#accountPasswordInput"),
+  accountRoleSelect: document.querySelector("#accountRoleSelect"),
+  accountLocationSelect: document.querySelector("#accountLocationSelect"),
+  accountCountBadge: document.querySelector("#accountCountBadge"),
+  accountList: document.querySelector("#accountList"),
   rightsList: document.querySelector("#rightsList"),
   appMenuBtn: document.querySelector("#appMenuBtn"),
   appMenu: document.querySelector("#appMenu"),
   logoutBtn: document.querySelector("#logoutBtn"),
+  darkModeToggle: document.querySelector("#darkModeToggle"),
   batchControlList: document.querySelector("#batchControlList"),
 };
 
@@ -142,6 +152,9 @@ let stableDetectionCount = 0;
 let lastAcceptedScanAt = 0;
 let apiSession = loadApiSession();
 let appUnlocked = isApiMode() || localStorage.getItem("appburovalie-demo-unlocked") === "true";
+let darkMode = localStorage.getItem(themeKey) === "dark";
+
+document.body.classList.toggle("dark-mode", darkMode);
 
 function loadData() {
   try {
@@ -328,6 +341,10 @@ function apiRoleToLocal(role) {
   return String(role || "").toLowerCase();
 }
 
+function localRoleToApi(role) {
+  return String(role || "").toUpperCase();
+}
+
 function apiTypeToLocal(type) {
   return String(type || "").toLowerCase() === "vehicule" ? "vehicle" : "depot";
 }
@@ -429,6 +446,9 @@ function renderUsers() {
   document.querySelectorAll(".admin-only").forEach((element) => {
     element.hidden = !["admin", "responsable"].includes(currentUser().role);
   });
+  document.querySelectorAll(".accounts-only").forEach((element) => {
+    element.hidden = !canManageRights();
+  });
   document.querySelectorAll(".rights-only").forEach((element) => {
     element.hidden = !canManageRights();
   });
@@ -440,6 +460,7 @@ function renderUsers() {
     ? `Connecté API : ${apiSession.user?.name || currentUser().name}`
     : "Mode démo local.";
   elements.serverStatus.classList.toggle("online", isApiMode());
+  elements.darkModeToggle.checked = darkMode;
 }
 
 function renderSelects() {
@@ -452,6 +473,7 @@ function renderSelects() {
     id: article.id,
     name: `${article.reference} - ${article.name}`,
   })));
+  addOptions(elements.accountLocationSelect, data.locations);
 
   elements.scanLocationSelect.value = locations.some((location) => location.id === currentUser().locationId)
     ? currentUser().locationId
@@ -691,10 +713,38 @@ function renderLabels() {
   `).join("");
 }
 
+function roleLabel(role) {
+  return {
+    admin: "Administrateur",
+    responsable: "Responsable",
+    direction: "Direction",
+    technicien: "Technicien",
+  }[role] || role;
+}
+
+function renderAccounts() {
+  if (!elements.accountList) return;
+  elements.accountCountBadge.textContent = data.users.length;
+  elements.accountList.innerHTML = data.users.map((user) => `
+    <article class="account-card">
+      <div>
+        <strong>${user.name}</strong>
+        <span>${roleLabel(user.role)} - ${getLocation(user.locationId)?.name || "Aucun stock principal"}</span>
+      </div>
+      <span class="badge">${user.id === currentUser().id ? "Connecté" : roleLabel(user.role)}</span>
+    </article>
+  `).join("");
+}
+
 function renderPermissions() {
   const canManageArticles = ["admin", "responsable"].includes(currentUser().role);
   document.querySelector('[data-view="articles"]').hidden = !canManageArticles;
   if (!canManageArticles && document.querySelector("#articlesView").classList.contains("active-view")) {
+    activateView("dashboard");
+  }
+
+  document.querySelector('[data-view="accounts"]').hidden = !canManageRights();
+  if (!canManageRights() && document.querySelector("#accountsView").classList.contains("active-view")) {
     activateView("dashboard");
   }
 
@@ -754,6 +804,7 @@ function renderAll() {
   renderTopArticles();
   renderArticles();
   renderLabels();
+  renderAccounts();
   renderRights();
   renderMovementDraft();
   renderBatchControl();
@@ -847,6 +898,65 @@ function resetArticleForm() {
   editingArticleId = "";
   elements.productForm.reset();
   elements.minInput.value = 2;
+}
+
+function resetAccountForm() {
+  elements.accountForm.reset();
+  elements.accountRoleSelect.value = "technicien";
+  elements.accountLocationSelect.value = data.locations[0]?.id || "";
+}
+
+function createAccount(event) {
+  event.preventDefault();
+  const user = {
+    id: `u-${Date.now()}`,
+    name: elements.accountNameInput.value.trim(),
+    email: elements.accountEmailInput.value.trim(),
+    role: elements.accountRoleSelect.value,
+    locationId: elements.accountLocationSelect.value,
+    allowedLocationIds: [elements.accountLocationSelect.value].filter(Boolean),
+  };
+  const password = elements.accountPasswordInput.value;
+
+  if (!user.name || !user.email || !password || !user.locationId) {
+    setMessage("Tous les champs du compte sont obligatoires.", "warning");
+    return;
+  }
+  if (password.length < 6) {
+    setMessage("Le mot de passe doit contenir au moins 6 caractères.", "warning");
+    return;
+  }
+  if (data.users.some((item) => item.email && item.email.toLowerCase() === user.email.toLowerCase())) {
+    setMessage("Un compte utilise déjà cet email.", "warning");
+    return;
+  }
+
+  if (isApiMode()) {
+    apiFetch("/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: user.name,
+        email: user.email,
+        password,
+        role: localRoleToApi(user.role),
+        primaryLocationId: user.locationId,
+        allowedLocationIds: user.allowedLocationIds,
+      }),
+    })
+      .then(loadServerData)
+      .then(() => {
+        resetAccountForm();
+        setMessage("Compte créé sur le serveur.", "success");
+      })
+      .catch((error) => setMessage(`Erreur API : ${error.message}`, "warning"));
+    return;
+  }
+
+  data.users.push(user);
+  saveData();
+  resetAccountForm();
+  renderAll();
+  setMessage("Compte créé en mode démo.", "success");
 }
 
 function saveArticle(event) {
@@ -1365,6 +1475,12 @@ function closeAppMenu() {
   elements.appMenuBtn.setAttribute("aria-expanded", "false");
 }
 
+function toggleDarkMode() {
+  darkMode = elements.darkModeToggle.checked;
+  document.body.classList.toggle("dark-mode", darkMode);
+  localStorage.setItem(themeKey, darkMode ? "dark" : "light");
+}
+
 function exportCsv(filename, rows) {
   const csv = rows.map((row) =>
     row.map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`).join(";")
@@ -1505,8 +1621,10 @@ elements.movementForm.addEventListener("submit", submitMovement);
 elements.addMovementLineBtn.addEventListener("click", addMovementLine);
 elements.resetMovementBtn.addEventListener("click", resetMovementDraft);
 elements.productForm.addEventListener("submit", saveArticle);
+elements.accountForm.addEventListener("submit", createAccount);
 elements.resetFormBtn.addEventListener("click", resetArticleForm);
 elements.articleSearchInput.addEventListener("input", renderArticles);
+elements.darkModeToggle.addEventListener("change", toggleDarkMode);
 elements.exportStockBtn.addEventListener("click", exportStock);
 elements.exportMovementsBtn.addEventListener("click", exportMovements);
 elements.exportOrdersBtn.addEventListener("click", exportOrders);
