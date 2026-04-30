@@ -30,6 +30,61 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+body.locked .app-shell {
+  display: none;
+}
+
+.login-view {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(135deg, #111 0%, #2a1116 46%, #b5122d 100%);
+}
+
+.login-card {
+  width: min(460px, 100%);
+  border-radius: 10px;
+  padding: 24px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+}
+
+.login-brand {
+  margin-bottom: 24px;
+}
+
+.login-brand h1 {
+  font-size: 28px;
+}
+
+.login-modes {
+  display: grid;
+  gap: 10px;
+}
+
+.login-separator {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.login-separator::before,
+.login-separator::after {
+  content: "";
+  height: 1px;
+  background: var(--line);
+}
+
+.login-submit {
+  text-align: center;
+}
+
 button,
 input,
 select {

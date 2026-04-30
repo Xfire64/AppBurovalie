@@ -59,11 +59,13 @@ const defaultData = {
 
 const elements = {
   userSelect: document.querySelector("#userSelect"),
-  apiUrlInput: document.querySelector("#apiUrlInput"),
-  apiEmailInput: document.querySelector("#apiEmailInput"),
-  apiPasswordInput: document.querySelector("#apiPasswordInput"),
-  serverLoginBtn: document.querySelector("#serverLoginBtn"),
-  serverLogoutBtn: document.querySelector("#serverLogoutBtn"),
+  loginView: document.querySelector("#loginView"),
+  loginApiUrlInput: document.querySelector("#loginApiUrlInput"),
+  loginEmailInput: document.querySelector("#loginEmailInput"),
+  loginPasswordInput: document.querySelector("#loginPasswordInput"),
+  loginApiBtn: document.querySelector("#loginApiBtn"),
+  demoLoginBtn: document.querySelector("#demoLoginBtn"),
+  loginMessage: document.querySelector("#loginMessage"),
   serverStatus: document.querySelector("#serverStatus"),
   installBtn: document.querySelector("#installBtn"),
   seedBtn: document.querySelector("#seedBtn"),
@@ -139,6 +141,7 @@ let lastDetectedCode = "";
 let stableDetectionCount = 0;
 let lastAcceptedScanAt = 0;
 let apiSession = loadApiSession();
+let appUnlocked = isApiMode() || localStorage.getItem("appburovalie-demo-unlocked") === "true";
 
 function loadData() {
   try {
@@ -433,7 +436,6 @@ function renderUsers() {
     element.hidden = !canPointBatches();
   });
 
-  elements.apiUrlInput.value = apiSession.apiUrl || defaultApiUrl;
   elements.serverStatus.textContent = isApiMode()
     ? `Connecté API : ${apiSession.user?.name || currentUser().name}`
     : "Mode démo local.";
@@ -737,6 +739,9 @@ function renderRights() {
 }
 
 function renderAll() {
+  document.body.classList.toggle("locked", !appUnlocked);
+  elements.loginView.hidden = appUnlocked;
+  elements.loginApiUrlInput.value = apiSession.apiUrl || defaultApiUrl;
   renderUsers();
   renderSelects();
   renderPermissions();
@@ -755,11 +760,12 @@ function renderAll() {
 }
 
 async function loginServer() {
-  apiSession.apiUrl = elements.apiUrlInput.value.trim() || defaultApiUrl;
-  const email = elements.apiEmailInput.value.trim();
-  const password = elements.apiPasswordInput.value;
+  apiSession.apiUrl = elements.loginApiUrlInput.value.trim() || defaultApiUrl;
+  const email = elements.loginEmailInput.value.trim();
+  const password = elements.loginPasswordInput.value;
 
   try {
+    elements.loginMessage.textContent = "Connexion en cours...";
     const result = await apiFetch("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
@@ -767,21 +773,36 @@ async function loginServer() {
     apiSession.token = result.token;
     apiSession.user = result.user;
     saveApiSession();
-    elements.apiPasswordInput.value = "";
+    elements.loginPasswordInput.value = "";
     await loadServerData();
+    appUnlocked = true;
+    localStorage.removeItem("appburovalie-demo-unlocked");
     closeAppMenu();
     setMessage("Connexion API réussie.", "success");
   } catch (error) {
-    setMessage(`Connexion API impossible : ${error.message}`, "warning");
+    elements.loginMessage.textContent = `Connexion API impossible : ${error.message}`;
+    elements.loginMessage.className = "status warning";
   }
 }
 
 function logoutServer() {
-  apiSession = { apiUrl: elements.apiUrlInput.value.trim() || defaultApiUrl, token: "", user: null };
+  apiSession = { apiUrl: apiSession.apiUrl || defaultApiUrl, token: "", user: null };
   saveApiSession();
+  localStorage.removeItem("appburovalie-demo-unlocked");
+  appUnlocked = false;
   data = loadData();
   renderAll();
   setMessage("Retour au mode démo local.", "warning");
+}
+
+function unlockDemoMode() {
+  apiSession = { apiUrl: elements.loginApiUrlInput.value.trim() || defaultApiUrl, token: "", user: null };
+  saveApiSession();
+  localStorage.setItem("appburovalie-demo-unlocked", "true");
+  appUnlocked = true;
+  data = loadData();
+  renderAll();
+  setMessage("Mode démo local activé.", "success");
 }
 
 async function loadServerData() {
@@ -1457,14 +1478,11 @@ elements.userSelect.addEventListener("change", () => {
   setMessage(`Connecté : ${currentUser().name}.`, "success");
 });
 elements.logoutBtn.addEventListener("click", () => {
-  data.currentUserId = data.users[0].id;
-  saveData();
-  renderAll();
+  logoutServer();
   activateView("dashboard");
-  setMessage("Déconnexion simulée. Retour au profil Admin.", "warning");
 });
-elements.serverLoginBtn.addEventListener("click", loginServer);
-elements.serverLogoutBtn.addEventListener("click", logoutServer);
+elements.loginApiBtn.addEventListener("click", loginServer);
+elements.demoLoginBtn.addEventListener("click", unlockDemoMode);
 elements.seedBtn.addEventListener("click", seedData);
 elements.scanBtn.addEventListener("click", () => startCameraScanner());
 elements.scanEntryBtn.addEventListener("click", () => scanCode("entry"));
