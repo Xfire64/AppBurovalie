@@ -436,25 +436,38 @@ select:focus {
   color: var(--muted);
 }
 
+.workspace-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.workspace-content {
+  min-width: 0;
+}
+
 .taskbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  position: sticky;
+  top: 16px;
+  display: block;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 8px;
+  padding: 10px;
   background: #fff;
   box-shadow: var(--shadow);
 }
 
 .taskbar-main {
-  display: flex;
+  display: grid;
   gap: 8px;
-  overflow-x: auto;
 }
 
 .task {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -462,6 +475,7 @@ select:focus {
   background: #fff;
   color: var(--ink);
   font-weight: 800;
+  text-align: left;
   white-space: nowrap;
 }
 
@@ -1037,6 +1051,18 @@ td span {
     flex-direction: column;
   }
 
+  .workspace-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .taskbar {
+    position: static;
+  }
+
+  .taskbar-main {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .form-panel,
   .stats {
     width: 100%;
@@ -1069,7 +1095,6 @@ td span {
   .taskbar-main {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    overflow: visible;
   }
 
   .app-menu {
