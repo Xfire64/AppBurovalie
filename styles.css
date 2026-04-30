@@ -601,10 +601,7 @@ select:focus {
   gap: 12px;
   min-height: 38px;
   margin: 0;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 7px 10px;
-  background: color-mix(in srgb, var(--panel) 92%, var(--line) 8%);
+  padding: 2px 0;
   color: var(--ink);
 }
 
