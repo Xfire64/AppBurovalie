@@ -67,3 +67,25 @@ Compte de test :
 admin@appburovalie.local
 demo1234
 ```
+
+## Preparation integration Kapasoft
+
+La documentation publique Kapasoft n'etant pas disponible au moment de la preparation, l'API contient un connecteur configurable sans endpoint metier invente.
+
+Variables a renseigner dans `backend/.env` quand Kapasoft fournit les informations :
+
+```env
+KAPASOFT_BASE_URL="https://api.kapasoft.example"
+KAPASOFT_API_KEY="cle-fournie-par-kapasoft"
+KAPASOFT_AUTH_HEADER="Authorization"
+KAPASOFT_AUTH_SCHEME="Bearer"
+KAPASOFT_HEALTH_PATH="/health"
+KAPASOFT_TIMEOUT_MS=8000
+```
+
+Routes disponibles pour les profils `ADMIN`, `RESPONSABLE` et `DIRECTION` :
+
+- `GET /integrations/kapasoft/status` : verifie si la configuration est presente sans afficher la cle API.
+- `POST /integrations/kapasoft/ping` : teste l'appel Kapasoft via le chemin configure.
+
+Quand la documentation Kapasoft sera fournie, il faudra completer le mapping articles, stocks, emplacements et mouvements dans `backend/src/integrations/kapasoft.js`.

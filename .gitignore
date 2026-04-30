@@ -8,3 +8,8 @@ Questionnaire_Cahier_des_charges_AppBurovalie.*
 Cahier_des_charges_AppBurovalie.*
 generate_questionnaire_*.py
 generate_cahier_des_charges.py
+generate_manuel_code_appburovalie*.py
+Manuel_code_AppBurovalie.*
+manuel_render/
+manuel_pdf_render/
+tmp-render/

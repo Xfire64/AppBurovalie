@@ -3,6 +3,7 @@ const cors = require("@fastify/cors");
 const bcrypt = require("bcryptjs");
 const { prisma } = require("./prisma");
 const { assertLocationAccess, canAccessAllStocks, requireAuth, requireRole, signToken } = require("./auth");
+const { KapasoftConfigError, pingKapasoft, publicKapasoftStatus } = require("./integrations/kapasoft");
 
 const app = Fastify({ logger: true });
 
@@ -12,6 +13,29 @@ app.register(cors, {
 });
 
 app.get("/health", async () => ({ ok: true }));
+
+app.get("/integrations/kapasoft/status", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION") }, async () => {
+  return publicKapasoftStatus();
+});
+
+app.post("/integrations/kapasoft/ping", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION") }, async (request, reply) => {
+  try {
+    const result = await pingKapasoft();
+    return { ok: true, result };
+  } catch (error) {
+    if (error instanceof KapasoftConfigError) {
+      return reply.code(400).send({ ok: false, error: error.message });
+    }
+
+    request.log.error({ error }, "Kapasoft ping failed");
+    return reply.code(502).send({
+      ok: false,
+      error: "KAPASOFT_UNREACHABLE",
+      statusCode: error.statusCode || null,
+      payload: error.payload || null,
+    });
+  }
+});
 
 app.post("/auth/login", async (request, reply) => {
   const { email, password } = request.body || {};
