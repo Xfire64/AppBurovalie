@@ -55,6 +55,26 @@ const defaultData = {
   },
   movements: [],
   batches: [],
+  catalog: [
+    {
+      id: "cat-cyan",
+      name: "Toner cyan copieur",
+      reference: "TON-CYAN-01",
+      barcode: "3760123456796",
+      extraCodes: [],
+      minimum: 4,
+      category: "Consommable",
+    },
+    {
+      id: "cat-four",
+      name: "Four unité de fusion",
+      reference: "FOUR-FUS-10",
+      barcode: "3760123456802",
+      extraCodes: ["FUS-UNIT-10"],
+      minimum: 1,
+      category: "Pièce",
+    },
+  ],
   currentUserId: "u-admin",
 };
 
@@ -123,6 +143,18 @@ const elements = {
   articleBody: document.querySelector("#articleBody"),
   printLabelsBtn: document.querySelector("#printLabelsBtn"),
   labelGrid: document.querySelector("#labelGrid"),
+  catalogForm: document.querySelector("#catalogForm"),
+  resetCatalogBtn: document.querySelector("#resetCatalogBtn"),
+  catalogNameInput: document.querySelector("#catalogNameInput"),
+  catalogRefInput: document.querySelector("#catalogRefInput"),
+  catalogCodeInput: document.querySelector("#catalogCodeInput"),
+  catalogExtraCodesInput: document.querySelector("#catalogExtraCodesInput"),
+  catalogMinInput: document.querySelector("#catalogMinInput"),
+  catalogCategoryInput: document.querySelector("#catalogCategoryInput"),
+  catalogImportInput: document.querySelector("#catalogImportInput"),
+  importCatalogBtn: document.querySelector("#importCatalogBtn"),
+  catalogSearchInput: document.querySelector("#catalogSearchInput"),
+  catalogList: document.querySelector("#catalogList"),
   accountForm: document.querySelector("#accountForm"),
   accountNameInput: document.querySelector("#accountNameInput"),
   accountEmailInput: document.querySelector("#accountEmailInput"),
@@ -141,6 +173,7 @@ const elements = {
 
 let data = loadData();
 let editingArticleId = "";
+let editingCatalogId = "";
 let deferredInstallPrompt = null;
 let cameraStream = null;
 let scanTimer = 0;
@@ -161,6 +194,7 @@ function loadData() {
     const stored = JSON.parse(localStorage.getItem(storageKey));
     const merged = stored ? { ...structuredClone(defaultData), ...stored } : structuredClone(defaultData);
     merged.batches = merged.batches || [];
+    merged.catalog = merged.catalog || [];
     return merged;
   } catch {
     return structuredClone(defaultData);
@@ -274,6 +308,11 @@ function allCodes(article) {
 function findArticleByCode(code) {
   const cleanCode = normalizeCode(code);
   return data.articles.find((article) => allCodes(article).includes(cleanCode));
+}
+
+function findCatalogByCode(code) {
+  const cleanCode = normalizeCode(code);
+  return (data.catalog || []).find((item) => allCodes(item).includes(cleanCode));
 }
 
 function formatDate(value) {
@@ -702,6 +741,31 @@ function renderArticles() {
   `).join("") : `<tr><td class="empty" colspan="5">Aucun article.</td></tr>`;
 }
 
+function renderCatalog() {
+  if (!elements.catalogList) return;
+  const query = elements.catalogSearchInput.value.trim().toLowerCase();
+  const items = (data.catalog || []).filter((item) =>
+    [item.name, item.reference, item.category, ...allCodes(item)].join(" ").toLowerCase().includes(query)
+  );
+
+  elements.catalogList.innerHTML = items.length ? items.map((item) => {
+    const exists = findArticleByCode(item.barcode);
+    return `
+      <article class="catalog-card">
+        <div>
+          <strong>${item.reference} - ${item.name}</strong>
+          <span>${item.category || "-"} · ${allCodes(item).join(", ")}</span>
+        </div>
+        <div class="catalog-actions">
+          ${exists ? `<span class="badge ok">Déjà en stock</span>` : `<button type="button" class="ghost-btn" data-create-from-catalog="${item.id}">Créer article</button>`}
+          <button type="button" data-edit-catalog="${item.id}">Modifier</button>
+          <button class="delete" type="button" data-delete-catalog="${item.id}">Supprimer</button>
+        </div>
+      </article>
+    `;
+  }).join("") : `<p class="empty">Aucune référence catalogue.</p>`;
+}
+
 function renderLabels() {
   elements.labelGrid.innerHTML = data.articles.map((article) => `
     <article class="label-card">
@@ -745,6 +809,11 @@ function renderPermissions() {
 
   document.querySelector('[data-view="accounts"]').hidden = !canManageRights();
   if (!canManageRights() && document.querySelector("#accountsView").classList.contains("active-view")) {
+    activateView("dashboard");
+  }
+
+  document.querySelector('[data-view="catalog"]').hidden = !canManageRights();
+  if (!canManageRights() && document.querySelector("#catalogView").classList.contains("active-view")) {
     activateView("dashboard");
   }
 
@@ -803,6 +872,7 @@ function renderAll() {
   renderOrders();
   renderTopArticles();
   renderArticles();
+  renderCatalog();
   renderLabels();
   renderAccounts();
   renderRights();
@@ -869,6 +939,7 @@ async function loadServerData() {
 
   let users = [me.user];
   let batches = [];
+  const localCatalog = loadData().catalog || [];
 
   if (["ADMIN", "RESPONSABLE", "DIRECTION"].includes(me.user.role)) {
     users = await apiFetch("/users");
@@ -887,6 +958,7 @@ async function loadServerData() {
     stocks: stockMap,
     movements: movements.map(movementFromApi),
     batches: batches.map(batchFromApi),
+    catalog: localCatalog,
     currentUserId: me.user.id,
   };
 
@@ -898,6 +970,103 @@ function resetArticleForm() {
   editingArticleId = "";
   elements.productForm.reset();
   elements.minInput.value = 2;
+}
+
+function resetCatalogForm() {
+  editingCatalogId = "";
+  elements.catalogForm.reset();
+  elements.catalogMinInput.value = 1;
+}
+
+function catalogItemFromForm() {
+  return {
+    id: editingCatalogId || `cat-${Date.now()}`,
+    name: elements.catalogNameInput.value.trim(),
+    reference: elements.catalogRefInput.value.trim(),
+    barcode: normalizeCode(elements.catalogCodeInput.value),
+    extraCodes: elements.catalogExtraCodesInput.value.split(",").map((code) => normalizeCode(code)).filter(Boolean),
+    minimum: Number(elements.catalogMinInput.value),
+    category: elements.catalogCategoryInput.value.trim(),
+  };
+}
+
+function fillArticleFormFromCatalog(item, scannedCode = "") {
+  editingArticleId = "";
+  elements.productForm.reset();
+  elements.nameInput.value = item.name;
+  elements.refInput.value = item.reference;
+  elements.codeInput.value = scannedCode || item.barcode;
+  elements.extraCodesInput.value = allCodes(item).filter((code) => code !== elements.codeInput.value).join(", ");
+  elements.minInput.value = item.minimum || 1;
+  elements.categoryInput.value = item.category || "";
+  activateView("articles");
+}
+
+function saveCatalogItem(event) {
+  event.preventDefault();
+  const item = catalogItemFromForm();
+
+  if (!item.name || !item.reference || !item.barcode) {
+    setMessage("Description, référence et code-barres catalogue sont obligatoires.", "warning");
+    return;
+  }
+
+  const usedCode = (data.catalog || []).some((existing) =>
+    existing.id !== item.id && allCodes(existing).some((code) => allCodes(item).includes(code))
+  );
+  if (usedCode) {
+    setMessage("Ce code-barres existe déjà dans le catalogue.", "warning");
+    return;
+  }
+
+  if (editingCatalogId) {
+    data.catalog = data.catalog.map((existing) => existing.id === editingCatalogId ? item : existing);
+    setMessage("Référence catalogue modifiée.", "success");
+  } else {
+    data.catalog.push(item);
+    setMessage("Référence ajoutée au catalogue.", "success");
+  }
+
+  saveData();
+  resetCatalogForm();
+  renderAll();
+}
+
+function importCatalogLines() {
+  const lines = elements.catalogImportInput.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  let imported = 0;
+  for (const line of lines) {
+    const separator = line.includes(";") ? ";" : line.includes("\t") ? "\t" : ",";
+    const [reference, name, barcode, category = "", minimum = "1"] = line.split(separator).map((part) => part.trim());
+    const item = {
+      id: `cat-${Date.now()}-${imported}`,
+      reference,
+      name,
+      barcode: normalizeCode(barcode || ""),
+      extraCodes: [],
+      category,
+      minimum: Number(minimum) || 1,
+    };
+
+    if (!item.reference || !item.name || !item.barcode) continue;
+    if ((data.catalog || []).some((existing) => allCodes(existing).includes(item.barcode))) continue;
+    data.catalog.push(item);
+    imported += 1;
+  }
+
+  if (!imported) {
+    setMessage("Aucune ligne catalogue importée. Format attendu : Référence;Description;Code-barres;Catégorie;Mini", "warning");
+    return;
+  }
+
+  elements.catalogImportInput.value = "";
+  saveData();
+  renderAll();
+  setMessage(`${imported} référence(s) importée(s) dans le catalogue.`, "success");
 }
 
 function resetAccountForm() {
@@ -1028,6 +1197,26 @@ function fillArticleForm(articleId) {
   elements.minInput.value = article.minimum;
   elements.categoryInput.value = article.category || "";
   activateView("articles");
+}
+
+function fillCatalogForm(catalogId) {
+  const item = (data.catalog || []).find((entry) => entry.id === catalogId);
+  if (!item) return;
+  editingCatalogId = item.id;
+  elements.catalogNameInput.value = item.name;
+  elements.catalogRefInput.value = item.reference;
+  elements.catalogCodeInput.value = item.barcode;
+  elements.catalogExtraCodesInput.value = (item.extraCodes || []).join(", ");
+  elements.catalogMinInput.value = item.minimum;
+  elements.catalogCategoryInput.value = item.category || "";
+  activateView("catalog");
+}
+
+function deleteCatalogItem(catalogId) {
+  data.catalog = (data.catalog || []).filter((item) => item.id !== catalogId);
+  saveData();
+  renderAll();
+  setMessage("Référence retirée du catalogue.", "warning");
 }
 
 function deleteArticle(articleId) {
@@ -1269,6 +1458,13 @@ function scanCode(mode = "search") {
 function handleScannedCode(code, mode = "search") {
   const article = findArticleByCode(code);
   if (!article) {
+    const catalogItem = findCatalogByCode(code);
+    if (catalogItem) {
+      fillArticleFormFromCatalog(catalogItem, code);
+      setMessage("Article reconnu dans le catalogue : fiche préremplie, tu peux l'enregistrer.", "success");
+      return;
+    }
+
     elements.codeInput.value = code;
     activateView("articles");
     setMessage("Nouveau code détecté : complète la fiche article.", "warning");
@@ -1621,9 +1817,13 @@ elements.movementForm.addEventListener("submit", submitMovement);
 elements.addMovementLineBtn.addEventListener("click", addMovementLine);
 elements.resetMovementBtn.addEventListener("click", resetMovementDraft);
 elements.productForm.addEventListener("submit", saveArticle);
+elements.catalogForm.addEventListener("submit", saveCatalogItem);
 elements.accountForm.addEventListener("submit", createAccount);
 elements.resetFormBtn.addEventListener("click", resetArticleForm);
+elements.resetCatalogBtn.addEventListener("click", resetCatalogForm);
+elements.importCatalogBtn.addEventListener("click", importCatalogLines);
 elements.articleSearchInput.addEventListener("input", renderArticles);
+elements.catalogSearchInput.addEventListener("input", renderCatalog);
 elements.darkModeToggle.addEventListener("change", toggleDarkMode);
 elements.exportStockBtn.addEventListener("click", exportStock);
 elements.exportMovementsBtn.addEventListener("click", exportMovements);
@@ -1636,6 +1836,21 @@ elements.articleBody.addEventListener("click", (event) => {
   const deleteId = event.target.dataset.deleteArticle;
   if (editId) fillArticleForm(editId);
   if (deleteId) deleteArticle(deleteId);
+});
+
+elements.catalogList.addEventListener("click", (event) => {
+  const editId = event.target.dataset.editCatalog;
+  const deleteId = event.target.dataset.deleteCatalog;
+  const createId = event.target.dataset.createFromCatalog;
+  if (editId) fillCatalogForm(editId);
+  if (deleteId) deleteCatalogItem(deleteId);
+  if (createId) {
+    const item = (data.catalog || []).find((entry) => entry.id === createId);
+    if (item) {
+      fillArticleFormFromCatalog(item);
+      setMessage("Fiche article préremplie depuis le catalogue.", "success");
+    }
+  }
 });
 
 elements.inventoryList.addEventListener("click", (event) => {

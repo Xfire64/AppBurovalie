@@ -46,7 +46,7 @@
             <p class="eyebrow">Burovalie</p>
             <div class="title-row">
               <h1>Gestion de stock</h1>
-              <span class="version-pill">v1.9</span>
+              <span class="version-pill">v2.0</span>
             </div>
           </div>
         </div>
@@ -72,6 +72,7 @@
               <section>
                 <h3>Options</h3>
                 <button class="menu-action admin-only" type="button" data-view="articles">Articles</button>
+                <button class="menu-action catalog-only" type="button" data-view="catalog">Catalogue articles</button>
                 <button class="menu-action accounts-only" type="button" data-view="accounts">Comptes utilisateurs</button>
                 <button class="menu-action rights-only" type="button" data-view="rights">Droits techniciens</button>
                 <button class="menu-action control-only" type="button" data-view="control">Pointage admin</button>
@@ -384,6 +385,49 @@
           </div>
           <div id="labelGrid" class="label-grid"></div>
         </section>
+      </section>
+
+      <section id="catalogView" class="view">
+        <div class="content-grid">
+          <form id="catalogForm" class="panel form-panel">
+            <div class="panel-heading">
+              <h2>Catalogue article</h2>
+              <button id="resetCatalogBtn" class="icon-btn" type="button" title="Nouveau">+</button>
+            </div>
+            <label for="catalogNameInput">Description</label>
+            <input id="catalogNameInput" type="text" placeholder="Ex : Toner cyan copieur" required />
+            <label for="catalogRefInput">Référence</label>
+            <input id="catalogRefInput" type="text" placeholder="Ex : TON-CYAN-01" required />
+            <label for="catalogCodeInput">Code-barres principal</label>
+            <input id="catalogCodeInput" type="text" placeholder="Ex : 3760123456789" required />
+            <label for="catalogExtraCodesInput">Autres codes-barres</label>
+            <input id="catalogExtraCodesInput" type="text" placeholder="Séparer par des virgules" />
+            <div class="two-cols">
+              <div>
+                <label for="catalogMinInput">Seuil mini</label>
+                <input id="catalogMinInput" type="number" min="0" step="1" value="1" required />
+              </div>
+              <div>
+                <label for="catalogCategoryInput">Catégorie</label>
+                <input id="catalogCategoryInput" type="text" placeholder="Pièce, consommable..." />
+              </div>
+            </div>
+            <button class="primary-btn" type="submit">Enregistrer au catalogue</button>
+            <div class="import-box">
+              <label for="catalogImportInput">Import reçu par mail</label>
+              <textarea id="catalogImportInput" rows="5" placeholder="Référence;Description;Code-barres;Catégorie;Mini"></textarea>
+              <button id="importCatalogBtn" class="ghost-btn full-btn" type="button">Importer les lignes</button>
+            </div>
+          </form>
+
+          <section class="panel inventory-panel">
+            <div class="panel-heading">
+              <h2>Références catalogue</h2>
+              <input id="catalogSearchInput" class="search" type="search" placeholder="Rechercher" />
+            </div>
+            <div id="catalogList" class="catalog-list"></div>
+          </section>
+        </div>
       </section>
 
       <section id="accountsView" class="view">

@@ -265,7 +265,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--line);
@@ -276,9 +277,14 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--accent);
   outline: 3px solid rgba(181, 18, 45, 0.14);
+}
+
+textarea {
+  resize: vertical;
 }
 
 .compact-select {
@@ -703,6 +709,12 @@ form .primary-btn {
   margin-top: 4px;
 }
 
+.import-box {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
 .full-btn {
   width: 100%;
   justify-content: center;
@@ -940,11 +952,13 @@ td span {
 }
 
 .account-list,
+.catalog-list,
 .rights-list {
   display: grid;
   gap: 12px;
 }
 
+.catalog-card,
 .account-card {
   display: flex;
   align-items: center;
@@ -956,11 +970,34 @@ td span {
   background: var(--panel);
 }
 
+.catalog-card div > span,
 .account-card div > span {
   display: block;
   margin-top: 5px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.catalog-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.catalog-actions button {
+  min-height: 32px;
+  border-radius: 6px;
+  padding: 0 10px;
+  background: color-mix(in srgb, var(--panel) 78%, var(--line) 22%);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.catalog-actions .delete {
+  background: color-mix(in srgb, var(--danger) 18%, var(--panel) 82%);
+  color: var(--danger);
 }
 
 .batch-card {
@@ -1228,6 +1265,8 @@ td span {
 
   .draft-item,
   .top-item,
+  .catalog-card,
+  .catalog-actions,
   .batch-head,
   .batch-meta,
   .batch-actions {
