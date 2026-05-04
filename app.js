@@ -887,23 +887,33 @@ async function loginServer() {
 
   try {
     elements.loginMessage.textContent = "Connexion en cours...";
+    elements.loginMessage.className = "status";
+    elements.loginApiBtn.disabled = true;
     const result = await apiFetch("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
+
     apiSession.token = result.token;
     apiSession.user = result.user;
     saveApiSession();
-    elements.loginPasswordInput.value = "";
-    await loadServerData();
     appUnlocked = true;
     localStorage.removeItem("appburovalie-demo-unlocked");
+    elements.loginPasswordInput.value = "";
     closeAppMenu();
     renderAll();
-    setMessage("Connexion API réussie.", "success");
+    setMessage("Connexion API réussie. Chargement des données...", "success");
+
+    await loadServerData();
+    setMessage("Données serveur chargées.", "success");
   } catch (error) {
+    apiSession = { apiUrl: apiSession.apiUrl || defaultApiUrl, token: "", user: null };
+    saveApiSession();
+    appUnlocked = false;
     elements.loginMessage.textContent = `Connexion API impossible : ${error.message}`;
     elements.loginMessage.className = "status warning";
+  } finally {
+    elements.loginApiBtn.disabled = false;
   }
 }
 
