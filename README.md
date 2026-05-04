@@ -31,6 +31,22 @@ http://localhost:5173
 Pour utiliser la camera du telephone, il faut une URL HTTPS.
 Publier l'application avec GitHub Pages, Netlify ou Vercel.
 
+## Domaines de production
+
+Webapp :
+
+```text
+https://app.appburovalie.fr
+```
+
+API :
+
+```text
+https://api.appburovalie.fr
+```
+
+Le VPS sert l'API avec Caddy en reverse proxy vers `127.0.0.1:3000`. La webapp peut etre servie par Caddy depuis le dossier racine du projet.
+
 ## Backend serveur
 
 Le dossier `backend/` contient la première API serveur :

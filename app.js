@@ -1,7 +1,7 @@
 const storageKey = "appburovalie-data-v1";
 const sessionKey = "appburovalie-api-session";
 const themeKey = "appburovalie-theme";
-const defaultApiUrl = "http://15.188.3.163:3000";
+const defaultApiUrl = "https://api.appburovalie.fr";
 
 const defaultData = {
   users: [
