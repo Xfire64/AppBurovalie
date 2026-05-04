@@ -549,10 +549,6 @@ textarea {
   box-shadow: var(--shadow);
 }
 
-.app-menu:hover .app-menu-panel {
-  display: grid !important;
-}
-
 .app-menu-panel h3 {
   margin: 0 0 8px;
   color: var(--accent);

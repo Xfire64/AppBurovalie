@@ -414,9 +414,10 @@
             </div>
             <button class="primary-btn" type="submit">Enregistrer au catalogue</button>
             <div class="import-box">
-              <label for="catalogImportInput">Import reçu par mail</label>
-              <textarea id="catalogImportInput" rows="5" placeholder="Référence;Description;Code-barres;Catégorie;Mini"></textarea>
-              <button id="importCatalogBtn" class="ghost-btn full-btn" type="button">Importer les lignes</button>
+              <label for="catalogFileInput">Import Excel</label>
+              <input id="catalogFileInput" type="file" accept=".xlsx,.xls,.csv" />
+              <p class="hint">Colonnes acceptées : référence, description, code-barres, catégorie, mini.</p>
+              <button id="importCatalogBtn" class="ghost-btn full-btn" type="button">Importer le fichier</button>
             </div>
           </form>
 
@@ -493,6 +494,7 @@
     </main>
 
     <script src="https://unpkg.com/html5-qrcode" defer></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

@@ -151,7 +151,7 @@ const elements = {
   catalogExtraCodesInput: document.querySelector("#catalogExtraCodesInput"),
   catalogMinInput: document.querySelector("#catalogMinInput"),
   catalogCategoryInput: document.querySelector("#catalogCategoryInput"),
-  catalogImportInput: document.querySelector("#catalogImportInput"),
+  catalogFileInput: document.querySelector("#catalogFileInput"),
   importCatalogBtn: document.querySelector("#importCatalogBtn"),
   catalogSearchInput: document.querySelector("#catalogSearchInput"),
   catalogList: document.querySelector("#catalogList"),
@@ -1032,41 +1032,103 @@ function saveCatalogItem(event) {
   renderAll();
 }
 
-function importCatalogLines() {
-  const lines = elements.catalogImportInput.value
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+async function importCatalogFile() {
+  const file = elements.catalogFileInput.files?.[0];
+  if (!file) {
+    setMessage("Choisis un fichier Excel ou CSV à importer.", "warning");
+    return;
+  }
 
-  let imported = 0;
-  for (const line of lines) {
+  try {
+    const rows = await readCatalogFile(file);
+    const imported = importCatalogRows(rows);
+
+    if (!imported) {
+      setMessage("Aucune ligne importée. Vérifie les colonnes : référence, description, code-barres, catégorie, mini.", "warning");
+      return;
+    }
+
+    elements.catalogFileInput.value = "";
+    saveData();
+    renderAll();
+    setMessage(`${imported} référence(s) importée(s) depuis Excel.`, "success");
+  } catch (error) {
+    setMessage(`Import impossible : ${error.message}`, "warning");
+  }
+}
+
+async function readCatalogFile(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".csv")) {
+    return parseDelimitedRows(await file.text());
+  }
+
+  if (!window.XLSX) {
+    throw new Error("module Excel non chargé");
+  }
+
+  const workbook = window.XLSX.read(await file.arrayBuffer(), { type: "array" });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  return window.XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+}
+
+function parseDelimitedRows(text) {
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return lines.map((line) => {
     const separator = line.includes(";") ? ";" : line.includes("\t") ? "\t" : ",";
-    const [reference, name, barcode, category = "", minimum = "1"] = line.split(separator).map((part) => part.trim());
-    const item = {
-      id: `cat-${Date.now()}-${imported}`,
-      reference,
-      name,
-      barcode: normalizeCode(barcode || ""),
-      extraCodes: [],
-      category,
-      minimum: Number(minimum) || 1,
-    };
+    return line.split(separator).map((part) => part.trim());
+  });
+}
 
+function importCatalogRows(rows) {
+  if (!rows.length) return 0;
+  const headers = rows[0].map(normalizeHeader);
+  const hasHeaders = headers.some((header) =>
+    ["reference", "ref", "description", "designation", "nom", "barcode", "codebarres", "ean"].includes(header)
+  );
+  const bodyRows = hasHeaders ? rows.slice(1) : rows;
+  let imported = 0;
+
+  for (const row of bodyRows) {
+    const item = catalogItemFromRow(row, hasHeaders ? headers : null, imported);
     if (!item.reference || !item.name || !item.barcode) continue;
     if ((data.catalog || []).some((existing) => allCodes(existing).includes(item.barcode))) continue;
     data.catalog.push(item);
     imported += 1;
   }
 
-  if (!imported) {
-    setMessage("Aucune ligne catalogue importée. Format attendu : Référence;Description;Code-barres;Catégorie;Mini", "warning");
-    return;
-  }
+  return imported;
+}
 
-  elements.catalogImportInput.value = "";
-  saveData();
-  renderAll();
-  setMessage(`${imported} référence(s) importée(s) dans le catalogue.`, "success");
+function catalogItemFromRow(row, headers, index) {
+  const value = (keys, fallbackIndex) => {
+    if (!headers) return String(row[fallbackIndex] || "").trim();
+    const foundIndex = headers.findIndex((header) => keys.includes(header));
+    return foundIndex >= 0 ? String(row[foundIndex] || "").trim() : "";
+  };
+
+  const extraCodes = value(["extra", "autrescodes", "codessecondaires"], 5)
+    .split(/[;,]/)
+    .map((code) => normalizeCode(code))
+    .filter(Boolean);
+
+  return {
+    id: `cat-${Date.now()}-${index}`,
+    reference: value(["reference", "ref"], 0),
+    name: value(["description", "designation", "nom", "article"], 1),
+    barcode: normalizeCode(value(["barcode", "codebarres", "code", "ean"], 2)),
+    extraCodes,
+    category: value(["categorie", "category", "famille"], 3),
+    minimum: Number(value(["mini", "minimum", "seuil"], 4)) || 1,
+  };
+}
+
+function normalizeHeader(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
 }
 
 function resetAccountForm() {
@@ -1821,7 +1883,7 @@ elements.catalogForm.addEventListener("submit", saveCatalogItem);
 elements.accountForm.addEventListener("submit", createAccount);
 elements.resetFormBtn.addEventListener("click", resetArticleForm);
 elements.resetCatalogBtn.addEventListener("click", resetCatalogForm);
-elements.importCatalogBtn.addEventListener("click", importCatalogLines);
+elements.importCatalogBtn.addEventListener("click", importCatalogFile);
 elements.articleSearchInput.addEventListener("input", renderArticles);
 elements.catalogSearchInput.addEventListener("input", renderCatalog);
 elements.darkModeToggle.addEventListener("change", toggleDarkMode);

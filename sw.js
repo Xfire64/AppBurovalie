@@ -1,4 +1,4 @@
-const cacheName = "appburovalie-v16";
+const cacheName = "appburovalie-v17";
 const appFiles = [
   "./",
   "./index.html",
