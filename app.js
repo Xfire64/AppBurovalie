@@ -899,6 +899,7 @@ async function loginServer() {
     appUnlocked = true;
     localStorage.removeItem("appburovalie-demo-unlocked");
     closeAppMenu();
+    renderAll();
     setMessage("Connexion API réussie.", "success");
   } catch (error) {
     elements.loginMessage.textContent = `Connexion API impossible : ${error.message}`;
