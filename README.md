@@ -55,6 +55,7 @@ Le dossier `backend/` contient la première API serveur :
 - Prisma
 - PostgreSQL
 - authentification JWT
+- premiere connexion avec choix obligatoire du mot de passe
 - rôles utilisateur
 - articles et codes-barres
 - stocks par dépôt/véhicule

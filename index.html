@@ -26,14 +26,24 @@
         <div class="login-modes">
           <button id="demoLoginBtn" class="primary-btn" type="button">Entrer en mode démo</button>
           <div class="login-separator">ou</div>
-          <label for="loginApiUrlInput">URL API</label>
-          <input id="loginApiUrlInput" type="url" placeholder="http://15.188.3.163:3000" />
+          <input id="loginApiUrlInput" type="hidden" />
+          <p class="hint">Connexion sécurisée au serveur Burovalie.</p>
           <label for="loginEmailInput">Email</label>
           <input id="loginEmailInput" type="email" placeholder="admin@appburovalie.local" />
           <label for="loginPasswordInput">Mot de passe</label>
           <input id="loginPasswordInput" type="password" placeholder="Mot de passe" />
           <button id="loginApiBtn" class="ghost-btn login-submit" type="button">Connexion API</button>
           <p id="loginMessage" class="status">Choisis un mode pour accéder à l'application.</p>
+        </div>
+        <div id="firstPasswordPanel" class="login-modes first-password-panel" hidden>
+          <div class="login-separator">Première connexion</div>
+          <p class="hint">Choisis ton mot de passe personnel pour continuer.</p>
+          <label for="firstPasswordInput">Nouveau mot de passe</label>
+          <input id="firstPasswordInput" type="password" minlength="6" placeholder="Minimum 6 caractères" />
+          <label for="firstPasswordConfirmInput">Confirmation</label>
+          <input id="firstPasswordConfirmInput" type="password" minlength="6" placeholder="Confirmer le mot de passe" />
+          <button id="firstPasswordBtn" class="primary-btn login-submit" type="button">Valider le mot de passe</button>
+          <p id="firstPasswordMessage" class="status"></p>
         </div>
       </div>
     </section>
@@ -433,7 +443,7 @@
 
       <section id="accountsView" class="view">
         <div class="content-grid">
-          <form id="accountForm" class="panel form-panel">
+          <form id="accountForm" class="panel form-panel" hidden>
             <div class="panel-heading">
               <h2>Créer un compte</h2>
               <p class="hint">Ajouter un utilisateur et choisir son stock principal.</p>
@@ -442,8 +452,6 @@
             <input id="accountNameInput" type="text" placeholder="Ex : Technicien 2" required />
             <label for="accountEmailInput">Email</label>
             <input id="accountEmailInput" type="email" placeholder="technicien2@appburovalie.local" required />
-            <label for="accountPasswordInput">Mot de passe</label>
-            <input id="accountPasswordInput" type="password" minlength="6" placeholder="Minimum 6 caractères" required />
             <label for="accountRoleSelect">Rôle</label>
             <select id="accountRoleSelect" required>
               <option value="technicien">Technicien</option>
@@ -455,11 +463,15 @@
             <select id="accountLocationSelect" required></select>
             <button class="primary-btn" type="submit">Créer le compte</button>
           </form>
+          <p id="accountTempPassword" class="status"></p>
 
           <section class="panel inventory-panel">
             <div class="panel-heading">
               <h2>Comptes existants</h2>
-              <span id="accountCountBadge" class="badge">0</span>
+              <div class="heading-actions">
+                <span id="accountCountBadge" class="badge">0</span>
+                <button id="showAccountFormBtn" class="small-primary-btn" type="button">Ajouter</button>
+              </div>
             </div>
             <div id="accountList" class="account-list"></div>
           </section>

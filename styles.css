@@ -79,6 +79,12 @@ body.locked .app-shell {
   gap: 10px;
 }
 
+.first-password-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
 .login-separator {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -952,6 +958,29 @@ td span {
 .rights-list {
   display: grid;
   gap: 12px;
+}
+
+.heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.small-primary-btn {
+  min-height: 30px;
+  border-radius: 6px;
+  padding: 0 12px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+#accountTempPassword {
+  align-self: start;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 4px;
 }
 
 .catalog-card,

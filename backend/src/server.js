@@ -54,6 +54,24 @@ app.post("/auth/login", async (request, reply) => {
   };
 });
 
+app.post("/auth/change-password", { preHandler: requireAuth }, async (request, reply) => {
+  const { password } = request.body || {};
+  if (!password || String(password).length < 6) {
+    return reply.code(400).send({ error: "PASSWORD_TOO_SHORT" });
+  }
+
+  const user = await prisma.user.update({
+    where: { id: request.user.id },
+    data: {
+      passwordHash: bcrypt.hashSync(password, 10),
+      mustChangePassword: false,
+    },
+    include: { allowedLocations: true },
+  });
+
+  return { user: publicUser(user) };
+});
+
 app.get("/auth/me", { preHandler: requireAuth }, async (request) => ({
   user: publicUser(request.user),
 }));
@@ -70,10 +88,10 @@ app.post("/users", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION"
   const { name, email, password, role = "TECHNICIEN", primaryLocationId, allowedLocationIds = [] } = request.body || {};
   const normalizedRole = String(role).toUpperCase();
 
-  if (!name || !email || !password || !primaryLocationId) {
+  if (!name || !email || !primaryLocationId) {
     return reply.code(400).send({ error: "MISSING_FIELDS" });
   }
-  if (String(password).length < 6) {
+  if (password && String(password).length < 6) {
     return reply.code(400).send({ error: "PASSWORD_TOO_SHORT" });
   }
   if (!["ADMIN", "TECHNICIEN", "RESPONSABLE", "DIRECTION"].includes(normalizedRole)) {
@@ -92,12 +110,14 @@ app.post("/users", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION"
 
   const ids = new Set(Array.isArray(allowedLocationIds) ? allowedLocationIds : []);
   ids.add(primaryLocationId);
+  const temporaryPassword = password || makeTemporaryPassword();
 
   const user = await prisma.user.create({
     data: {
       name,
       email,
-      passwordHash: bcrypt.hashSync(password, 10),
+      passwordHash: bcrypt.hashSync(temporaryPassword, 10),
+      mustChangePassword: !password,
       role: normalizedRole,
       primaryLocationId,
       allowedLocations: {
@@ -107,7 +127,10 @@ app.post("/users", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION"
     include: { allowedLocations: true, primaryLocation: true },
   });
 
-  return reply.code(201).send(publicUser(user));
+  return reply.code(201).send({
+    user: publicUser(user),
+    temporaryPassword: password ? null : temporaryPassword,
+  });
 });
 
 app.patch("/users/:id/locations", { preHandler: requireRole("ADMIN", "RESPONSABLE", "DIRECTION") }, async (request) => {
@@ -298,9 +321,14 @@ function publicUser(user) {
     name: user.name,
     email: user.email,
     role: user.role,
+    mustChangePassword: Boolean(user.mustChangePassword),
     primaryLocationId: user.primaryLocationId,
     allowedLocationIds: user.allowedLocations?.map((item) => item.locationId) || [],
   };
+}
+
+function makeTemporaryPassword() {
+  return `Buro-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
 function batchInclude() {

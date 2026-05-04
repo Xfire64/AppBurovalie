@@ -87,6 +87,11 @@ const elements = {
   loginApiBtn: document.querySelector("#loginApiBtn"),
   demoLoginBtn: document.querySelector("#demoLoginBtn"),
   loginMessage: document.querySelector("#loginMessage"),
+  firstPasswordPanel: document.querySelector("#firstPasswordPanel"),
+  firstPasswordInput: document.querySelector("#firstPasswordInput"),
+  firstPasswordConfirmInput: document.querySelector("#firstPasswordConfirmInput"),
+  firstPasswordBtn: document.querySelector("#firstPasswordBtn"),
+  firstPasswordMessage: document.querySelector("#firstPasswordMessage"),
   serverStatus: document.querySelector("#serverStatus"),
   installBtn: document.querySelector("#installBtn"),
   seedBtn: document.querySelector("#seedBtn"),
@@ -158,9 +163,10 @@ const elements = {
   accountForm: document.querySelector("#accountForm"),
   accountNameInput: document.querySelector("#accountNameInput"),
   accountEmailInput: document.querySelector("#accountEmailInput"),
-  accountPasswordInput: document.querySelector("#accountPasswordInput"),
   accountRoleSelect: document.querySelector("#accountRoleSelect"),
   accountLocationSelect: document.querySelector("#accountLocationSelect"),
+  accountTempPassword: document.querySelector("#accountTempPassword"),
+  showAccountFormBtn: document.querySelector("#showAccountFormBtn"),
   accountCountBadge: document.querySelector("#accountCountBadge"),
   accountList: document.querySelector("#accountList"),
   rightsList: document.querySelector("#rightsList"),
@@ -184,7 +190,7 @@ let lastDetectedCode = "";
 let stableDetectionCount = 0;
 let lastAcceptedScanAt = 0;
 let apiSession = loadApiSession();
-let appUnlocked = isApiMode() || localStorage.getItem("appburovalie-demo-unlocked") === "true";
+let appUnlocked = (isApiMode() && !apiSession.user?.mustChangePassword) || localStorage.getItem("appburovalie-demo-unlocked") === "true";
 let darkMode = localStorage.getItem(themeKey) === "dark";
 
 document.body.classList.toggle("dark-mode", darkMode);
@@ -434,6 +440,7 @@ function userFromApi(user) {
     role: apiRoleToLocal(user.role),
     locationId: user.primaryLocationId,
     allowedLocationIds: user.allowedLocationIds || [],
+    mustChangePassword: Boolean(user.mustChangePassword),
   };
 }
 
@@ -795,7 +802,7 @@ function renderAccounts() {
         <strong>${user.name}</strong>
         <span>${roleLabel(user.role)} - ${getLocation(user.locationId)?.name || "Aucun stock principal"}</span>
       </div>
-      <span class="badge">${user.id === currentUser().id ? "Connecté" : roleLabel(user.role)}</span>
+      <span class="badge ${user.mustChangePassword ? "danger" : ""}">${user.mustChangePassword ? "1ere connexion" : (user.id === currentUser().id ? "Connecté" : roleLabel(user.role))}</span>
     </article>
   `).join("");
 }
@@ -858,8 +865,10 @@ function renderRights() {
 }
 
 function renderAll() {
+  const needsPasswordSetup = isApiMode() && Boolean(apiSession.user?.mustChangePassword) && !appUnlocked;
   document.body.classList.toggle("locked", !appUnlocked);
   elements.loginView.hidden = appUnlocked;
+  elements.firstPasswordPanel.hidden = !needsPasswordSetup;
   elements.loginApiUrlInput.value = apiSession.apiUrl || defaultApiUrl;
   renderUsers();
   renderSelects();
@@ -881,7 +890,7 @@ function renderAll() {
 }
 
 async function loginServer() {
-  apiSession.apiUrl = elements.loginApiUrlInput.value.trim() || defaultApiUrl;
+  apiSession.apiUrl = defaultApiUrl;
   const email = elements.loginEmailInput.value.trim();
   const password = elements.loginPasswordInput.value;
 
@@ -897,9 +906,19 @@ async function loginServer() {
     apiSession.token = result.token;
     apiSession.user = result.user;
     saveApiSession();
-    appUnlocked = true;
     localStorage.removeItem("appburovalie-demo-unlocked");
     elements.loginPasswordInput.value = "";
+
+    if (result.user?.mustChangePassword) {
+      appUnlocked = false;
+      renderAll();
+      elements.firstPasswordInput.focus();
+      elements.loginMessage.textContent = "Premiere connexion : choisissez votre mot de passe.";
+      elements.loginMessage.className = "status warning";
+      return;
+    }
+
+    appUnlocked = true;
     closeAppMenu();
     renderAll();
     setMessage("Connexion API réussie. Chargement des données...", "success");
@@ -917,8 +936,51 @@ async function loginServer() {
   }
 }
 
+async function changeFirstPassword() {
+  const password = elements.firstPasswordInput.value;
+  const confirmation = elements.firstPasswordConfirmInput.value;
+
+  if (!password || password.length < 6) {
+    elements.firstPasswordMessage.textContent = "Le mot de passe doit contenir au moins 6 caracteres.";
+    elements.firstPasswordMessage.className = "status warning";
+    return;
+  }
+  if (password !== confirmation) {
+    elements.firstPasswordMessage.textContent = "Les deux mots de passe ne correspondent pas.";
+    elements.firstPasswordMessage.className = "status warning";
+    return;
+  }
+
+  try {
+    elements.firstPasswordBtn.disabled = true;
+    elements.firstPasswordMessage.textContent = "Enregistrement du mot de passe...";
+    elements.firstPasswordMessage.className = "status";
+    const result = await apiFetch("/auth/change-password", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    });
+
+    apiSession.user = result.user;
+    saveApiSession();
+    appUnlocked = true;
+    elements.firstPasswordInput.value = "";
+    elements.firstPasswordConfirmInput.value = "";
+    elements.firstPasswordPanel.hidden = true;
+    closeAppMenu();
+    renderAll();
+    setMessage("Mot de passe defini. Chargement des donnees...", "success");
+    await loadServerData();
+    setMessage("Connexion terminee.", "success");
+  } catch (error) {
+    elements.firstPasswordMessage.textContent = `Erreur API : ${error.message}`;
+    elements.firstPasswordMessage.className = "status warning";
+  } finally {
+    elements.firstPasswordBtn.disabled = false;
+  }
+}
+
 function logoutServer() {
-  apiSession = { apiUrl: apiSession.apiUrl || defaultApiUrl, token: "", user: null };
+  apiSession = { apiUrl: defaultApiUrl, token: "", user: null };
   saveApiSession();
   localStorage.removeItem("appburovalie-demo-unlocked");
   appUnlocked = false;
@@ -928,7 +990,7 @@ function logoutServer() {
 }
 
 function unlockDemoMode() {
-  apiSession = { apiUrl: elements.loginApiUrlInput.value.trim() || defaultApiUrl, token: "", user: null };
+  apiSession = { apiUrl: defaultApiUrl, token: "", user: null };
   saveApiSession();
   localStorage.setItem("appburovalie-demo-unlocked", "true");
   appUnlocked = true;
@@ -1148,6 +1210,14 @@ function resetAccountForm() {
   elements.accountLocationSelect.value = data.locations[0]?.id || "";
 }
 
+function showAccountForm() {
+  elements.accountForm.hidden = false;
+  elements.accountTempPassword.textContent = "";
+  elements.accountTempPassword.className = "status";
+  resetAccountForm();
+  elements.accountNameInput.focus();
+}
+
 function createAccount(event) {
   event.preventDefault();
   const user = {
@@ -1157,15 +1227,10 @@ function createAccount(event) {
     role: elements.accountRoleSelect.value,
     locationId: elements.accountLocationSelect.value,
     allowedLocationIds: [elements.accountLocationSelect.value].filter(Boolean),
+    mustChangePassword: true,
   };
-  const password = elements.accountPasswordInput.value;
-
-  if (!user.name || !user.email || !password || !user.locationId) {
+  if (!user.name || !user.email || !user.locationId) {
     setMessage("Tous les champs du compte sont obligatoires.", "warning");
-    return;
-  }
-  if (password.length < 6) {
-    setMessage("Le mot de passe doit contenir au moins 6 caractères.", "warning");
     return;
   }
   if (data.users.some((item) => item.email && item.email.toLowerCase() === user.email.toLowerCase())) {
@@ -1179,15 +1244,19 @@ function createAccount(event) {
       body: JSON.stringify({
         name: user.name,
         email: user.email,
-        password,
         role: localRoleToApi(user.role),
         primaryLocationId: user.locationId,
         allowedLocationIds: user.allowedLocationIds,
       }),
     })
-      .then(loadServerData)
-      .then(() => {
+      .then(async (result) => {
+        await loadServerData();
         resetAccountForm();
+        elements.accountForm.hidden = true;
+        if (result?.temporaryPassword) {
+          elements.accountTempPassword.textContent = `Mot de passe temporaire : ${result.temporaryPassword}`;
+          elements.accountTempPassword.className = "status success";
+        }
         setMessage("Compte créé sur le serveur.", "success");
       })
       .catch((error) => setMessage(`Erreur API : ${error.message}`, "warning"));
@@ -1197,6 +1266,9 @@ function createAccount(event) {
   data.users.push(user);
   saveData();
   resetAccountForm();
+  elements.accountForm.hidden = true;
+  elements.accountTempPassword.textContent = "En mode demo, selectionnez ce compte dans le menu connexion.";
+  elements.accountTempPassword.className = "status success";
   renderAll();
   setMessage("Compte créé en mode démo.", "success");
 }
@@ -1868,6 +1940,7 @@ elements.logoutBtn.addEventListener("click", () => {
 });
 elements.loginApiBtn.addEventListener("click", loginServer);
 elements.demoLoginBtn.addEventListener("click", unlockDemoMode);
+elements.firstPasswordBtn.addEventListener("click", changeFirstPassword);
 elements.seedBtn.addEventListener("click", seedData);
 elements.scanBtn.addEventListener("click", () => startCameraScanner());
 elements.scanEntryBtn.addEventListener("click", () => scanCode("entry"));
@@ -1892,6 +1965,7 @@ elements.resetMovementBtn.addEventListener("click", resetMovementDraft);
 elements.productForm.addEventListener("submit", saveArticle);
 elements.catalogForm.addEventListener("submit", saveCatalogItem);
 elements.accountForm.addEventListener("submit", createAccount);
+elements.showAccountFormBtn.addEventListener("click", showAccountForm);
 elements.resetFormBtn.addEventListener("click", resetArticleForm);
 elements.resetCatalogBtn.addEventListener("click", resetCatalogForm);
 elements.importCatalogBtn.addEventListener("click", importCatalogFile);
@@ -2003,7 +2077,7 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
 window.addEventListener("beforeunload", stopCameraScanner);
 
 renderAll();
-if (isApiMode()) {
+if (isApiMode() && appUnlocked) {
   loadServerData().catch((error) => {
     setMessage(`API indisponible : ${error.message}. Mode local conservé.`, "warning");
   });
